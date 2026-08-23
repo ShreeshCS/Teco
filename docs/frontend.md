@@ -50,7 +50,7 @@ Protected-route logic redirects an unauthenticated user to `/login`. The server 
 ```mermaid
 flowchart TD
     App["App"]
-    Auth["Public pages\nLogin and Register"]
+    Auth["Public pages Login and Register"]
     Chat["Protected chat layout"]
     List["ConversationList"]
     Header["ConversationHeader"]

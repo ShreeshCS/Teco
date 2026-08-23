@@ -13,8 +13,8 @@ V1 supports direct, one-to-one conversations only. Each conversation has exactly
 ```mermaid
 flowchart LR
     User["User"]
-    Conversation["Conversation\none-to-one in V1"]
-    Participant["ConversationParticipant\nlinks one user to one conversation"]
+    Conversation["Conversation one-to-one in V1"]
+    Participant["ConversationParticipant links one user to one conversation"]
     Message["Message"]
 
     User -->|"belongs to"| Participant
