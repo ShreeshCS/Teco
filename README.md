@@ -15,8 +15,26 @@ Teco/
 
 - Node.js 20 or later
 - npm
+- Docker Desktop
 
 ## Run locally
+
+Create your local environment file and start PostgreSQL:
+
+```bash
+cp .env.example .env
+docker compose up -d
+```
+
+PostgreSQL is then available to applications running on your machine at `localhost:5432`. Its connection string is the `DATABASE_URL` in `.env`.
+
+Database data is stored in Docker's `postgres-data` volume, so it persists when you run `docker compose down`. Use `docker compose down -v` only when you intentionally want to delete local database data.
+
+Adminer is an optional database UI at `http://localhost:8080`. Sign in with:
+
+- System: `PostgreSQL`
+- Server: `db`
+- Username, password, and database: the matching `POSTGRES_*` values in `.env`
 
 Install the client dependencies:
 
