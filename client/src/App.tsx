@@ -5,8 +5,8 @@ import viteLogo from './assets/vite.svg'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
-
+  const [message, setMessage] = useState('Hello from client!')
+  const handleClick = () => fetch('http://localhost:3000/health').then((res) => res.json()).then((data) => setMessage(data))
   return (
     <>
       <section id="center">
@@ -24,9 +24,9 @@ function App() {
         <button
           type="button"
           className="counter"
-          onClick={() => setCount((count) => count + 1)}
+          onClick={handleClick}
         >
-          Count is {count}
+          {message}
         </button>
       </section>
 
