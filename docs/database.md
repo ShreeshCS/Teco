@@ -10,6 +10,8 @@ V1 supports direct, one-to-one conversations only. Each conversation has exactly
 
 ## Logical Data Model
 
+![Teco V1 entity relationship diagram]//TODO: Create ER Diagram manually
+
 ```mermaid
 flowchart LR
     User["User"]
