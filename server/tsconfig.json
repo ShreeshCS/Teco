@@ -9,5 +9,6 @@
     "esModuleInterop": true,
     "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["src"], // Only compile app execution code
+  "exclude": ["node_modules", "prisma.config.ts"] // prisma client generation will handle the prisma.config.ts file, so we exclude it from compilation
 }
