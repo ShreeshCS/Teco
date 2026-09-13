@@ -10,7 +10,7 @@ V1 supports direct, one-to-one conversations only. Each conversation has exactly
 
 ## Logical Data Model
 
-![Teco V1 entity relationship diagram]//TODO: Create ER Diagram manually
+![Teco V1 entity relationship diagram](./ER-Diagram.png)
 
 ```mermaid
 flowchart LR
@@ -25,7 +25,13 @@ flowchart LR
     Conversation -->|"contains"| Message
 ```
 
-In plain language, the participant table is the join record between users and conversations. It keeps the V1 schema ready for the future possibility of more participants without pretending that V1 already has group chat.
+## Design Reasoning
+
+`ConversationParticipant` is the join record between users and conversations. A conversation therefore represents the chat itself, while its two participant records represent who is allowed to take part in it. This avoids assigning artificial `userId1` and `userId2` roles to the two people in a direct chat.
+
+Each message stores its conversation and its sender, rather than a receiver ID. In a one-to-one conversation, the receiver is the other participant. Storing a receiver on every message would duplicate membership data and could allow an inconsistent message whose receiver is not part of the conversation.
+
+The participant table also leaves a clear path to group chat later: a group conversation would add participant rows instead of requiring a different message structure. V1 still deliberately enforces exactly two participants per conversation.
 
 ## Tables
 
@@ -34,6 +40,7 @@ In plain language, the participant table is the join record between users and co
 | Column | Type | Rules | Purpose |
 | --- | --- | --- | --- |
 | `id` | UUID | Primary key | Identifies the user. |
+| `name` | String | Required | Display name shown in the chat UI. |
 | `email` | String | Required, unique | Used for login. |
 | `passwordHash` | String | Required | Stores a password hash, never the original password. |
 | `createdAt` | DateTime | Required | Creation timestamp. |
@@ -106,6 +113,7 @@ This is the intended V1 shape. It is a design reference; the actual `schema.pris
 ```prisma
 model User {
   id            String                    @id @default(uuid())
+  name          String
   email         String                    @unique
   passwordHash  String
   createdAt     DateTime                  @default(now())
