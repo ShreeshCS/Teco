@@ -2,7 +2,21 @@
 
 ## Purpose
 
-PostgreSQL is Teco's persistent store. Prisma owns the schema definition and migrations in `database/prisma/`; the server uses Prisma Client to access it. The browser client never connects to the database.
+PostgreSQL is Teco's persistent store. Prisma owns the schema definition and migrations in `server/prisma/`; the server uses Prisma Client to access it. The browser client never connects to the database.
+
+## Final Prisma paths in this repo
+
+```text
+server/
+├── prisma/
+│   ├── schema.prisma       # Canonical Prisma schema for the app
+│   ├── seed.ts            # Local seed script (when added)
+│   └── migrations/        # Committed migration files
+└── src/
+    └── generated/prisma/  # Generated Prisma Client, refreshed via `npx prisma generate`
+```
+
+The schema file and migration history are versioned and committed. The generated client is created locally from the schema and should be regenerated instead of manually edited.
 
 ## V1 Scope
 
@@ -106,72 +120,87 @@ sequenceDiagram
 | `ConversationParticipant` | Index `userId` | Efficiently list a user's conversations. |
 | `Message` | Index `(conversationId, createdAt)` | Efficiently load a conversation's messages in time order. |
 
-## Planned Prisma Schema
+## Current Prisma schema
 
-This is the intended V1 shape. It is a design reference; the actual `schema.prisma` will be created during the Prisma setup issue.
+The actual Prisma schema lives at `server/prisma/schema.prisma` and is the source of truth for the database. The generated client output in `server/src/generated/prisma` is produced automatically and should not be hand-edited.
 
 ```prisma
 model User {
-  id            String                    @id @default(uuid())
-  name          String
-  email         String                    @unique
-  passwordHash  String
-  createdAt     DateTime                  @default(now())
-  updatedAt     DateTime                  @updatedAt
-  participants  ConversationParticipant[]
-  sentMessages  Message[]                 @relation("SentMessages")
-}
-
-model Conversation {
-  id            String                    @id @default(uuid())
-  createdAt     DateTime                  @default(now())
-  updatedAt     DateTime                  @updatedAt
-  participants  ConversationParticipant[]
-  messages      Message[]
-}
-
-model ConversationParticipant {
-  conversationId String
-  userId         String
-  createdAt      DateTime     @default(now())
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([conversationId, userId])
-  @@index([userId])
+  id                       String                     @id @default(uuid())
+  email                    String                     @unique
+  name                     String
+  passwordHash             String
+  createdAt                DateTime                   @default(now())
+  messages                 Message[]
+  conversationParticipants Conversation_Participant[]
 }
 
 model Message {
   id             String       @id @default(uuid())
-  conversationId String
-  senderId       String
   content        String
   createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+  createdBy      User         @relation(fields: [createdById], references: [id])
+  createdById    String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversationId String
 
   @@index([conversationId, createdAt])
 }
+
+model Conversation {
+  id                       String                     @id @default(uuid())
+  createdAt                DateTime                   @default(now())
+  messages                 Message[]
+  conversationParticipants Conversation_Participant[]
+}
+
+model Conversation_Participant {
+  conversationId String
+  userId         String
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@id([conversationId, userId])
+  @@index([userId])
+}
 ```
 
-The “exactly two participants” and “no duplicate pair” rules are enforced in the V1 conversation service. They cannot be expressed fully by a simple foreign-key constraint alone.
+## Prisma workflow
 
-## Prisma Workflow
+Use the repo-local workflow in this order:
 
-```text
-Edit schema.prisma
-        ↓
-prisma migrate dev --name <change-name>
-        ↓
-Generated migration committed to database/prisma/migrations/
-        ↓
-prisma generate
-        ↓
-Server uses the generated Prisma Client
+```bash
+cp .env.example .env
+cd server
+npm install
+npx prisma migrate deploy
+npx prisma generate
+node --env-file ../.env --input-type=module <<'EOF'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from './src/generated/prisma/client.js'
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
+const prisma = new PrismaClient({ adapter })
+const result = await prisma.$queryRaw`SELECT 1 AS ok`
+console.log(JSON.stringify(result))
+await prisma.$disconnect()
+EOF
 ```
 
-Every schema change gets a reviewed migration. Development seed data belongs in `database/prisma/seed.ts` and includes at least two users, one direct conversation, and sample messages.
+Each schema change is captured as a migration in `server/prisma/migrations/`. Apply migrations with `npx prisma migrate deploy` for a fresh local setup or `npx prisma migrate dev` during active schema work.
+
+## Committed vs local artifacts
+
+Committed in Git:
+- `server/prisma/schema.prisma`
+- `server/prisma/migrations/**`
+- `server/prisma/seed.ts` if it exists
+
+Local-only and not committed:
+- `.env` and `.env.*`
+- Docker-managed database storage in the `postgres-data` volume
+- any generated Prisma Client output in `server/src/generated/prisma/`
 
 ## V2: Group Chat
 
