@@ -6,9 +6,13 @@ Teco is a learning project for building a real-time, one-to-one chat application
 
 ```text
 Teco/
-├── client/    # React + Vite browser application
-├── server/    # Express API
-└── docs/      # Architecture and design notes
+├── client/              # React + Vite browser application
+├── server/              # Express API and Prisma project
+├── docs/                # Architecture and design notes
+├── docker-compose.yml   # PostgreSQL + Adminer containers
+├── .env.example         # Copy to .env for local development
+├── .env                 # Local secrets, not committed
+└── .gitignore           # Ignores local environment files and generated outputs
 ```
 
 ## Prerequisites
@@ -17,24 +21,90 @@ Teco/
 - npm
 - Docker Desktop
 
-## Run locally
+## Prisma + PostgreSQL setup
 
-Create your local environment file and start PostgreSQL:
+Follow this order for a reproducible setup from a fresh checkout.
+
+1. Configure the local environment file from the example:
 
 ```bash
 cp .env.example .env
+```
+
+2. Start PostgreSQL and Adminer from the repo root:
+
+```bash
+cd /Users/shreesh/Desktop/Repos/Teco
 docker compose up -d
 ```
 
-PostgreSQL is then available to applications running on your machine at `localhost:5432`. Its connection string is the `DATABASE_URL` in `.env`.
+3. Install the server dependencies:
 
-Database data is stored in Docker's `postgres-data` volume, so it persists when you run `docker compose down`. Use `docker compose down -v` only when you intentionally want to delete local database data.
+```bash
+cd server
+npm install
+```
 
-Adminer is an optional database UI at `http://localhost:8080`. Sign in with:
+4. Apply the committed Prisma migration to the local database:
 
-- System: `PostgreSQL`
-- Server: `db`
-- Username, password, and database: the matching `POSTGRES_*` values in `.env`
+```bash
+cd server
+npx prisma migrate deploy
+```
+
+5. Generate the Prisma Client that the server imports:
+
+```bash
+cd server
+npx prisma generate
+```
+
+6. Run a database connectivity check:
+
+```bash
+cd server
+node --env-file ../.env --input-type=module <<'EOF'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from './src/generated/prisma/client.js'
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
+const prisma = new PrismaClient({ adapter })
+const result = await prisma.$queryRaw`SELECT 1 AS ok`
+console.log(JSON.stringify(result))
+await prisma.$disconnect()
+EOF
+```
+
+Expected output:
+
+```json
+[{"ok":1}]
+```
+
+This confirms the server can reach PostgreSQL with the configured `DATABASE_URL`.
+
+### Prisma file locations
+
+- Schema: `server/prisma/schema.prisma`
+- Migrations: `server/prisma/migrations/`
+- Seed script: `server/prisma/seed.ts` (if added later)
+- Generated client: `server/src/generated/prisma/`
+
+### What is committed vs local
+
+Committed to Git:
+- `server/prisma/schema.prisma`
+- `server/prisma/migrations/**`
+- any intentionally versioned Prisma seed or config files
+
+Local-only / not committed:
+- `.env`, `.env.local`, other environment files
+- Docker volume data (`postgres-data`)
+- generated Prisma client output under `server/src/generated/prisma/` after `npx prisma generate`
+
+The generated Prisma client is not handwritten; it is refreshed when the schema changes and should be regenerated rather than edited directly.
+
+## Run locally
 
 Install the client dependencies:
 
@@ -52,11 +122,10 @@ npm run dev
 
 Vite prints the local URL, normally `http://localhost:5173`.
 
-In a second terminal, install and start the server:
+In a second terminal, start the server:
 
 ```bash
 cd server
-npm install
 npm run dev
 ```
 
