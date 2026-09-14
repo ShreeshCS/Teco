@@ -62,6 +62,10 @@ flowchart LR
 | Messages | `GET /api/conversations/:id/messages` | Read paginated messages. |
 | Messages | `POST /api/conversations/:id/messages` | Persist a message in an authorized conversation. |
 
+## Conversation Creation Flow
+
+See [new-chat-flow.md](./new-chat-flow.md) for the detailed transaction flow when creating a new direct conversation.
+
 ## Authentication and Authorization
 
 ```mermaid
