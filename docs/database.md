@@ -18,6 +18,62 @@ server/
 
 The schema file and migration history are versioned and committed. The generated client is created locally from the schema and should be regenerated instead of manually edited.
 
+## Running Migrations & Seeding
+
+### Generate Prisma Client
+
+After modifying `schema.prisma`, regenerate the client:
+
+```bash
+cd server
+npx prisma generate
+```
+
+### Run Migrations
+
+To apply pending migrations to your development database:
+
+```bash
+cd server
+npx prisma migrate dev
+```
+
+If you need to reset the database completely (dev only), use:
+
+```bash
+cd server
+npx prisma migrate reset
+```
+
+This drops and recreates the database, reapplies all migrations, and runs the seed script.
+
+### Seed the Database
+
+To populate sample data (users, conversations, messages):
+
+```bash
+cd server
+npm run seed
+```
+
+This script creates:
+- Two sample users (Alice and Bob)
+- One conversation between them
+- Four sample messages exchanged in the conversation
+
+The seed script runs inside a transaction and clears existing data before inserting, so it is safe to run multiple times.
+
+### View Data Visually
+
+To browse database tables and their contents:
+
+```bash
+cd server
+npx prisma studio
+```
+
+This opens an interactive UI at `http://localhost:5555` where you can inspect and edit records directly.
+
 ## V1 Scope
 
 V1 supports direct, one-to-one conversations only. Each conversation has exactly two `ConversationParticipant` records. Messages belong to one conversation and one sending user.
