@@ -11,28 +11,43 @@
  * - Uses Prisma's select to return only safe attributes (id, name, email, createdAt), omitting passwordHash
  */
 
+import { Prisma } from '../generated/prisma/index.js'
 import { prisma } from '../lib/prisma.js'
+import { EmailAlreadyExistsError } from '../middleware/exceptionHandler.js'
 import { RegisterPayload, SafeUser } from '../types/auth.js'
 
 export const registerUserService = async (userData: RegisterPayload) => {
-  // Hash the password before storing it in the database
-  const passwordHash = await hashPassword(userData.password)
+  try {
+    // Hash the password before storing it in the database
+    const passwordHash = await hashPassword(userData.password)
 
-  const user: SafeUser = await prisma.user.create({
-    data: {
-      name: userData.name,
-      email: userData.email,
-      passwordHash: passwordHash,
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      createdAt: true,
-    },
-  })
+    const user: SafeUser = await prisma.user.create({
+      data: {
+        name: userData.name,
+        email: userData.email,
+        passwordHash: passwordHash,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true,
+      },
+    })
 
-  return user;
+    return user
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const errorMessage = error.message.includes('constraint: `User_email_key`') ?? ''
+      if (errorMessage) {
+        throw new EmailAlreadyExistsError()
+      }
+    }
+    throw error
+  }
 }
 
 const hashPassword = async (password: string): Promise<string> => {

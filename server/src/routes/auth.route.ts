@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { registerUser } from "../controllers/auth.controller.js";
 
-const router = Router();
+const router = Router(); // TODO: instead of having multiple instances of router in the server, try sharing instance from one place
 const basePath = "/auth";
 
 const registerRoute = `${basePath}/register`;
