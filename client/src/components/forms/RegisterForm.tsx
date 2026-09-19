@@ -1,14 +1,9 @@
 import { useState, type ChangeEvent, type SubmitEvent } from "react";
 import { TextInput, Button, Message } from "../ui";
+import type { RegistrationUserData } from "../../types/auth.types";
+import { registerUser } from "../../services/auth/auth.service";
 
-type RegisterFormState = {
-	name: string;
-	email: string;
-	password: string;
-	confirmPassword: string;
-};
-
-const initialForm: RegisterFormState = {
+const initialForm: RegistrationUserData = {
 	name: "",
 	email: "",
 	password: "",
@@ -16,7 +11,7 @@ const initialForm: RegisterFormState = {
 };
 
 export default function RegisterForm() {
-	const [form, setForm] = useState<RegisterFormState>(initialForm);
+	const [form, setForm] = useState<RegistrationUserData>(initialForm);
 	const [message, setMessage] = useState("");
 	const [isError, setIsError] = useState(false);
 
@@ -25,7 +20,7 @@ export default function RegisterForm() {
 		setForm((prev) => ({ ...prev, [name]: value }));
 	};
 
-	const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+	const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
 		event.preventDefault();
 
 		if (form.password !== form.confirmPassword) {
@@ -35,8 +30,10 @@ export default function RegisterForm() {
 		}
 
 		setIsError(false);
+		const userDetails = await registerUser(form);
 		setMessage(`Welcome, ${form.name || "friend"}! Your account is ready.`);
 		setForm(initialForm);
+		console.log("User registered successfully:", userDetails);
 	};
 
 	return (
