@@ -6,20 +6,15 @@
   align-items: center;
   padding: 1.5rem;
   background-color: #0b0813; /* Dark Midnight/Synthwave aesthetic */
-  color: #ffffff;
 }
 
 .auth-header {
   text-align: center;
-  margin-bottom: 1.5rem;
 }
 
 .retro-logo {
-  font-size: 2.25rem;
-  letter-spacing: 0.15em;
-  color: #00f0ff; /* Electric Cyan */
   margin: 0;
-  text-shadow: 0 0 12px rgba(0, 240, 255, 0.6);
+  height: 12rem;
 }
 
 .auth-tagline {
@@ -30,7 +25,7 @@
 
 .auth-card {
   width: 100%;
-  max-width: 420px;
+  max-width: 450px;
   background-color: #120e24;
   border: 1px solid #1e1b4b;
   border-radius: 12px;
@@ -39,7 +34,6 @@
 }
 
 .auth-footer {
-  margin-top: 2rem;
   font-size: 0.75rem;
   color: #64748b;
 }

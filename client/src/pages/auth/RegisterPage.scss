@@ -1,0 +1,14 @@
+.retro-pixel-text {
+  /* Use the retro font with a monospace fallback */
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  
+  /* CRITICAL: Keep edges sharp and prevent browser blurring */
+  font-smooth: never;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  font-synthesis-weight: none;
+  
+  /* Pixel fonts display best at exact multiples of their base size (usually 8px or 16px) */
+  font-size: 18px; 
+  line-height: 1.5;
+}
