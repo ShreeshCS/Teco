@@ -1,0 +1,62 @@
+.auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+  background-color: #0b0813; /* Dark Midnight/Synthwave aesthetic */
+  color: #ffffff;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.retro-logo {
+  font-size: 2.25rem;
+  letter-spacing: 0.15em;
+  color: #00f0ff; /* Electric Cyan */
+  margin: 0;
+  text-shadow: 0 0 12px rgba(0, 240, 255, 0.6);
+}
+
+.auth-tagline {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin-top: 0.25rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background-color: #120e24;
+  border: 1px solid #1e1b4b;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.auth-footer {
+  margin-top: 2rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.auth-switch-prompt {
+  text-align: center;
+  margin-top: 1.25rem;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.auth-switch-prompt a {
+  color: #00f0ff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth-switch-prompt a:hover {
+  text-decoration: underline;
+}

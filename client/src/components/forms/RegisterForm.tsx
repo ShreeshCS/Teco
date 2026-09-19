@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent, type SubmitEvent } from "react";
+import { TextInput, Button, Message } from "../ui";
 
 type RegisterFormState = {
 	name: string;
@@ -33,7 +34,7 @@ export default function RegisterForm() {
 			return;
 		}
 
-        setIsError(false);
+		setIsError(false);
 		setMessage(`Welcome, ${form.name || "friend"}! Your account is ready.`);
 		setForm(initialForm);
 	};
@@ -43,61 +44,49 @@ export default function RegisterForm() {
 			<form className="register-card" onSubmit={handleSubmit}>
 				<h1>Create account</h1>
 
-				<label>
-					Full name
-					<input
-						name="name"
-						type="text"
-						value={form.name}
-						onChange={handleChange}
-						placeholder="Name"
-						required
-					/>
-				</label>
+				<TextInput
+					label="Full name"
+					name="name"
+					type="text"
+					value={form.name}
+					onChange={handleChange}
+					placeholder="Name"
+					required
+				/>
 
-				<label>
-					Email
-					<input
-						name="email"
-						type="email"
-						value={form.email}
-						onChange={handleChange}
-						placeholder="abc@example.com"
-						required
-					/>
-				</label>
+				<TextInput
+					label="Email"
+					name="email"
+					type="email"
+					value={form.email}
+					onChange={handleChange}
+					placeholder="abc@example.com"
+					required
+				/>
 
-				<label>
-					Password
-					<input
-						name="password"
-						type="password"
-						value={form.password}
-						onChange={handleChange}
-						placeholder="Enter password"
-						required
-					/>
-				</label>
+				<TextInput
+					label="Password"
+					name="password"
+					type="password"
+					value={form.password}
+					onChange={handleChange}
+					placeholder="Enter password"
+					required
+				/>
 
-				<label>
-					Confirm password
-					<input
-						name="confirmPassword"
-						type="password"
-						value={form.confirmPassword}
-						onChange={handleChange}
-						placeholder="Confirm password"
-						required
-					/>
-				</label>
+				<TextInput
+					label="Confirm password"
+					name="confirmPassword"
+					type="password"
+					value={form.confirmPassword}
+					onChange={handleChange}
+					placeholder="Confirm password"
+					required
+				/>
 
-				<button type="submit">Register</button>
+				<Button type="submit">Register</Button>
 
-				{message ? (
-					<p className={isError ? "error-message" : "form-message"}>
-						{message}
-					</p>
-				) : null}
+				<Message text={message} isError={isError} />
 			</form>
 		</div>
 	);
