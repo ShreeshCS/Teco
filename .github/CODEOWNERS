@@ -1,0 +1,5 @@
+# Require your approval for all files
+* @ShreeshCS
+
+# Protect the CODEOWNERS file itself
+/.github/CODEOWNERS @ShreeshCS
