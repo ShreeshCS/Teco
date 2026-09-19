@@ -41,60 +41,91 @@ Teco/
 - npm
 - Docker Desktop
 
-## Local setup
+## Prisma + PostgreSQL setup
 
-1. Copy the example environment file:
+Follow this order for a reproducible setup from a fresh checkout.
+
+1. Configure the local environment file from the example:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Start PostgreSQL and the optional Adminer UI:
+2. Start PostgreSQL and Adminer from the repo root:
 
 ```bash
+cd /Users/shreesh/Desktop/Repos/Teco
 docker compose up -d
 ```
 
-This starts:
-
-- PostgreSQL at `localhost:5432`
-- Adminer at `http://localhost:8080`
-
-The database values come from `.env`:
-
-- `POSTGRES_USER`
-- `POSTGRES_PASSWORD`
-- `POSTGRES_DB`
-- `DATABASE_URL`
-
-3. Install dependencies for the server:
+3. Install the server dependencies:
 
 ```bash
 cd server
 npm install
 ```
 
-4. Apply the Prisma schema to the local database:
+4. Apply the committed Prisma migration to the local database:
 
 ```bash
-npx prisma migrate dev --name init
+cd server
+npx prisma migrate deploy
 ```
 
-If the database is already initialized, you can use:
+5. Generate the Prisma Client that the server imports:
 
 ```bash
+cd server
 npx prisma generate
 ```
 
-5. Start the server:
+6. Run a database connectivity check:
 
 ```bash
-npm run dev
+cd server
+node --env-file ../.env --input-type=module <<'EOF'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from './src/generated/prisma/client.js'
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
+const prisma = new PrismaClient({ adapter })
+const result = await prisma.$queryRaw`SELECT 1 AS ok`
+console.log(JSON.stringify(result))
+await prisma.$disconnect()
+EOF
 ```
 
-The API runs at `http://localhost:3000`.
+Expected output:
 
-6. Install and start the client in a second terminal:
+```json
+[{"ok":1}]
+```
+
+This confirms the server can reach PostgreSQL with the configured `DATABASE_URL`.
+
+### Prisma file locations
+
+- Schema: `server/prisma/schema.prisma`
+- Migrations: `server/prisma/migrations/`
+- Seed script: `server/prisma/seed.ts` (if added later)
+- Generated client: `server/src/generated/prisma/`
+
+### What is committed vs local
+
+Committed to Git:
+- `server/prisma/schema.prisma`
+- `server/prisma/migrations/**`
+- any intentionally versioned Prisma seed or config files
+
+Local-only / not committed:
+- `.env`, `.env.local`, other environment files
+- Docker volume data (`postgres-data`)
+- generated Prisma client output under `server/src/generated/prisma/` after `npx prisma generate`
+
+The generated Prisma client is not handwritten; it is refreshed when the schema changes and should be regenerated rather than edited directly.
+
+## Run Client locally
+Install and start the client in a second terminal:
 
 ```bash
 cd client

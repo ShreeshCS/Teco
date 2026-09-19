@@ -4,6 +4,8 @@
 
 `server/` contains the Node.js application. It exposes the HTTP API, authenticates and authorizes users, applies business rules, accesses PostgreSQL through Prisma, and hosts Socket.IO.
 
+The Prisma source of truth lives in `server/prisma/schema.prisma`, and the committed migration history is in `server/prisma/migrations/`. The Prisma Client used at runtime is generated in `server/src/generated/prisma/` and imported through `server/src/lib/prisma.ts`.
+
 ## Technology
 
 - Node.js
@@ -12,23 +14,30 @@
 - Prisma Client
 - Socket.IO server
 
-## Planned Structure
+## Actual project structure
 
 ```text
 server/
+├── prisma/
+│   ├── schema.prisma       # Prisma schema source of truth
+│   ├── seed.ts            # Optional local seed script
+│   └── migrations/        # Versioned database migrations
 ├── src/
-│   ├── routes/          # URL and HTTP-method mappings
-│   ├── controllers/     # Request and response handling
-│   ├── services/        # Business rules and Prisma operations
-│   ├── middleware/      # Auth, validation, and error handling
-│   ├── sockets/         # Socket.IO setup and event handlers
-│   ├── lib/             # Shared integrations, including Prisma
-│   ├── types/           # Server TypeScript types
-│   ├── utils/           # Pure helper functions
-│   ├── app.ts           # Express configuration
-│   └── server.ts        # HTTP and Socket.IO startup
+│   ├── routes/            # URL and HTTP-method mappings
+│   ├── controllers/       # Request and response handling
+│   ├── services/          # Business rules and Prisma operations
+│   ├── middleware/        # Auth, validation, and error handling
+│   ├── sockets/           # Socket.IO setup and event handlers
+│   ├── lib/
+│   │   └── prisma.ts      # PrismaClient wrapper using DATABASE_URL
+│   ├── generated/prisma/  # Generated Prisma Client output
+│   ├── types/             # Server TypeScript types
+│   ├── utils/             # Pure helper functions
+│   ├── app.ts             # Express configuration
+│   └── server.ts          # HTTP and Socket.IO startup
 ├── package.json
-└── tsconfig.json
+├── tsconfig.json
+└── prisma.config.ts
 ```
 
 ## Request Flow
@@ -46,7 +55,15 @@ flowchart LR
 | Route | Maps an HTTP method and URL to a controller; attaches middleware. | Contain business logic. |
 | Controller | Reads validated request input and writes the HTTP response. | Contain database queries or authorization rules. |
 | Service | Checks data-dependent permissions and applies business rules. | Depend on Express request/response objects. |
-| Prisma | Translates service operations to database queries. | Be called by the client. |
+| Prisma | Translates service operations to database queries. | Be called directly from the browser or client code. |
+
+## Prisma responsibility boundaries
+
+- `server/prisma/schema.prisma` defines the data model and relation rules.
+- `server/prisma/migrations/` stores migration SQL for each schema change.
+- `server/src/lib/prisma.ts` is the app-level Prisma entry point and reads `DATABASE_URL` from environment variables.
+- `server/src/generated/prisma/` is generated output from the schema and is not manual application code.
+- Services call Prisma for data access. Routes and controllers should not talk to the database directly.
 
 ## Initial HTTP API
 
@@ -102,6 +119,35 @@ Validation errors, authentication failures, authorization failures, missing reso
 | `JWT_SECRET` | Signs and verifies access tokens. |
 | `PORT` | HTTP and Socket.IO server port. |
 | `CLIENT_URL` | Allowed browser origin for CORS. |
+
+## Local Prisma workflow
+
+From the repo root, the reproducible steps are:
+
+```bash
+cp .env.example .env
+docker compose up -d
+cd server
+npm install
+npx prisma migrate deploy
+npx prisma generate
+```
+
+After that, run the runtime check:
+
+```bash
+cd server
+node --env-file ../.env --input-type=module <<'EOF'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from './src/generated/prisma/client.js'
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
+const prisma = new PrismaClient({ adapter })
+const result = await prisma.$queryRaw`SELECT 1 AS ok`
+console.log(JSON.stringify(result))
+await prisma.$disconnect()
+EOF
+```
 
 ## V1 Boundary and V2
 

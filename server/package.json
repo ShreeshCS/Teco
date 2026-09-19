@@ -10,7 +10,11 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test"
+    "test": "node --test",
+    "seed": "prisma db seed"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
@@ -30,7 +34,7 @@
     "globals": "^16.5.0",
     "prettier": "^3.7.4",
     "prisma": "^7.10.0",
-    "tsx": "^4.20.6",
+    "tsx": "^4.23.13",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4"
   }
