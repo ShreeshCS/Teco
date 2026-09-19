@@ -1,5 +1,9 @@
 # Database Design
 
+## Current implementation
+
+The actual Prisma schema for this repo lives in `server/prisma/schema.prisma`. The current implementation defines the models `User`, `Conversation`, `Conversation_Participant`, and `Message` in that file. PostgreSQL is still configured via Docker Compose, and the browser client does not connect directly to the database.
+
 ## Purpose
 
 PostgreSQL is Teco's persistent store. Prisma owns the schema definition and migrations in `server/prisma/`; the server uses Prisma Client to access it. The browser client never connects to the database.
@@ -109,41 +113,47 @@ The participant table also leaves a clear path to group chat later: a group conv
 
 | Column | Type | Rules | Purpose |
 | --- | --- | --- | --- |
-| `id` | UUID | Primary key | Identifies the user. |
-| `name` | String | Required | Display name shown in the chat UI. |
-| `email` | String | Required, unique | Used for login. |
-| `passwordHash` | String | Required | Stores a password hash, never the original password. |
-| `createdAt` | DateTime | Required | Creation timestamp. |
-| `updatedAt` | DateTime | Required | Last-update timestamp. |
+| `id` | `String` | Primary key, generated as UUID | Identifies the user. |
+| `email` | `String` | Required, unique | Login credential and account key. |
+| `name` | `String` | Required | Display name shown in the app. |
+| `passwordHash` | `String` | Required | Stores the hashed password, never the raw password. |
+| `createdAt` | `DateTime` | Required | Creation timestamp. |
+| `messages` | `Message[]` | Relation | Messages sent by the user. |
+| `conversationParticipants` | `Conversation_Participant[]` | Relation | Conversations the user belongs to. |
 
 ### Conversation
 
 | Column | Type | Rules | Purpose |
 | --- | --- | --- | --- |
-| `id` | UUID | Primary key | Identifies a direct conversation. |
-| `createdAt` | DateTime | Required | Creation timestamp. |
-| `updatedAt` | DateTime | Required | Updated when a message changes conversation activity. |
+| `id` | `String` | Primary key, generated as UUID | Identifies a conversation. |
+| `createdAt` | `DateTime` | Required | Creation timestamp. |
+| `messages` | `Message[]` | Relation | Messages in the conversation. |
+| `conversationParticipants` | `Conversation_Participant[]` | Relation | Users attached to the conversation. |
 
-### ConversationParticipant
+### Conversation_Participant
 
 | Column | Type | Rules | Purpose |
 | --- | --- | --- | --- |
-| `conversationId` | UUID | Foreign key to `Conversation` | Identifies the conversation. |
-| `userId` | UUID | Foreign key to `User` | Identifies a participant. |
-| `createdAt` | DateTime | Required | When the participant record was created. |
+| `conversationId` | `String` | Composite primary key / FK to `Conversation` | Identifies the conversation. |
+| `userId` | `String` | Composite primary key / FK to `User` | Identifies a participant. |
+| `conversation` | `Conversation` | Required relation | Conversation record. |
+| `user` | `User` | Required relation | Participant user record. |
 
-The combination of `conversationId` and `userId` is unique. This prevents the same user from being attached twice to one conversation.
+The combination of `conversationId` and `userId` is unique by design. This prevents the same user from being attached twice to one conversation.
 
 ### Message
 
 | Column | Type | Rules | Purpose |
 | --- | --- | --- | --- |
-| `id` | UUID | Primary key | Identifies the message. |
-| `conversationId` | UUID | Foreign key to `Conversation` | Identifies the message's conversation. |
-| `senderId` | UUID | Foreign key to `User` | Identifies the sending user. |
-| `content` | String | Required | The message body. |
-| `createdAt` | DateTime | Required | Send timestamp. |
-| `updatedAt` | DateTime | Required | Last-update timestamp. |
+| `id` | `String` | Primary key, generated as UUID | Identifies the message. |
+| `content` | `String` | Required | The message body. |
+| `createdAt` | `DateTime` | Required | Send timestamp. |
+| `createdBy` | `User` | Required relation | User who sent the message. |
+| `createdById` | `String` | Required FK to `User` | Sender reference. |
+| `conversation` | `Conversation` | Required relation | Parent conversation. |
+| `conversationId` | `String` | Required FK to `Conversation` | Conversation reference. |
+
+The current implementation uses the actual Prisma field names in `server/prisma/schema.prisma`, including `createdById` instead of `senderId` and `Conversation_Participant` instead of `ConversationParticipant`.
 
 ## Relationship Rules
 
@@ -172,8 +182,8 @@ sequenceDiagram
 | Table | Index or constraint | Reason |
 | --- | --- | --- |
 | `User` | Unique `email` | Prevent duplicate accounts and enable login lookup. |
-| `ConversationParticipant` | Unique `(conversationId, userId)` | Prevent duplicate membership. |
-| `ConversationParticipant` | Index `userId` | Efficiently list a user's conversations. |
+| `Conversation_Participant` | Composite primary key `(conversationId, userId)` | Prevent duplicate membership. |
+| `Conversation_Participant` | Index `userId` | Efficiently list a user's conversations. |
 | `Message` | Index `(conversationId, createdAt)` | Efficiently load a conversation's messages in time order. |
 
 ## Current Prisma schema
