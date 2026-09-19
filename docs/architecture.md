@@ -18,23 +18,23 @@ flowchart LR
 ```text
 Teco/
 ├── client/              # React application
-├── server/              # Express and Socket.IO application
-├── database/
-│   └── prisma/          # Prisma schema, migrations, and seed data
+├── server/              # Express application and Prisma schema
+│   └── prisma/          # Current Prisma schema and migrations
 ├── docs/                # Project design documentation
 ├── docker-compose.yml   # Local PostgreSQL service
 ├── .env.example
-└── README.md
+├── README.md
+└── .env                 # Local environment file
 ```
 
 ## Responsibilities
 
 | Area | Responsibility |
 | --- | --- |
-| `client/` | Interface, browser-side state, API calls, and real-time event handling. |
-| `server/` | Authentication, authorization, validation, business rules, API endpoints, and Socket.IO events. |
-| `database/prisma/` | Prisma schema, generated migrations, and development seed data. |
-| PostgreSQL | Persistent storage for users, direct conversations, participants, and messages. |
+| `client/` | Browser UI, local app state, and HTTP calls to the server. |
+| `server/` | HTTP API, Prisma access, and future business rules. Auth and Socket.IO are not implemented yet. |
+| `server/prisma/` | Prisma schema and migration files for the current database model. |
+| PostgreSQL | Persistent storage for users, conversations, participants, and messages. |
 
 ## Detailed Design Documents
 
@@ -42,6 +42,10 @@ Teco/
 - [Backend architecture](backend.md)
 - [Database design](database.md)
 - [Real-time Socket.IO design](socket.md)
+
+## Current implementation status
+
+The project is in a foundation stage. The server currently exposes a simple health endpoint, the client is still the default Vite starter UI, and the rest of the chat features are being designed and implemented incrementally.
 
 ## V1 Boundary
 

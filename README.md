@@ -1,18 +1,38 @@
 # Teco
 
-Teco is a learning project for building a real-time, one-to-one chat application. The browser client is built with React and Vite; the API is built with Node.js, Express, and TypeScript. PostgreSQL, Prisma, authentication, and Socket.IO will be added as the project develops.
+Teco is a learning project for building a real-time one-to-one chat app. The current repository is in its foundation stage: the React + Vite frontend, Express API, PostgreSQL service, and Prisma schema are set up, but the actual chat features, authentication, and real-time messaging layer are not implemented yet.
 
-## Project structure
+## Current project state
+
+This repo currently includes:
+
+- A React + Vite client in `client/`
+- An Express + TypeScript server in `server/`
+- A PostgreSQL instance managed by Docker Compose
+- A Prisma schema for users, conversations, participants, and messages
+- A basic `/health` endpoint on the server
+
+The app is not yet a working chat application. The client is still the default Vite starter UI, and the server does not yet include auth, Socket.IO, conversation endpoints, or message delivery logic.
+
+## Repository structure
 
 ```text
 Teco/
-├── client/              # React + Vite browser application
-├── server/              # Express API and Prisma project
-├── docs/                # Architecture and design notes
-├── docker-compose.yml   # PostgreSQL + Adminer containers
-├── .env.example         # Copy to .env for local development
-├── .env                 # Local secrets, not committed
-└── .gitignore           # Ignores local environment files and generated outputs
+├── .env.example
+├── docker-compose.yml
+├── README.md
+├── client/                 # React + Vite frontend
+│   ├── src/
+│   ├── package.json
+│   └── ...
+├── server/                 # Express + TypeScript API
+│   ├── prisma/
+│   ├── src/
+│   ├── package.json
+│   └── ...
+├── docs/                   # Design notes and architecture docs
+├── shared/
+└── .env                    # Local environment file
 ```
 
 ## Prerequisites
@@ -104,40 +124,36 @@ Local-only / not committed:
 
 The generated Prisma client is not handwritten; it is refreshed when the schema changes and should be regenerated rather than edited directly.
 
-## Run locally
-
-Install the client dependencies:
+## Run Client locally
+Install and start the client in a second terminal:
 
 ```bash
 cd client
 npm install
-```
-
-In a terminal, start the client:
-
-```bash
-cd client
 npm run dev
 ```
 
-Vite prints the local URL, normally `http://localhost:5173`.
+The client runs at `http://localhost:5173`.
 
-In a second terminal, start the server:
+## Current runtime behavior
+
+The current server exposes a simple health check:
 
 ```bash
-cd server
-npm run dev
+curl http://localhost:3000/health
 ```
 
-The API runs at `http://localhost:3000`. Confirm it is available by opening `http://localhost:3000/health`; it returns:
+It currently returns:
 
 ```json
-{ "status": "ok" }
+"Hello from Server!"
 ```
+
+The client currently uses the default Vite starter UI and calls this health endpoint on button click.
 
 ## Available commands
 
-Run these inside either `client/` or `server/` where applicable:
+Run these inside the relevant directory (`client/` or `server/`):
 
 ```bash
 npm run dev      # Start the development server
@@ -145,3 +161,29 @@ npm run build    # Create a production build
 npm run lint     # Check code with ESLint
 npm test         # Run tests (server only for now)
 ```
+
+## Database and Prisma
+
+The Prisma schema is defined in `server/prisma/schema.prisma` and currently includes models for:
+
+- `User`
+- `Conversation`
+- `Conversation_Participant`
+- `Message`
+
+The generated Prisma client is located under `server/src/generated/prisma`.
+
+## Planned next steps
+
+The project roadmap is still in progress. The next major milestones are expected to include:
+
+- user registration and login
+- direct conversation creation
+- sending and listing messages
+- Socket.IO real-time delivery
+- protected routes and auth middleware
+- chat UI polish
+
+## Documentation
+
+Additional design notes are in the `docs/` folder, including architecture and data model planning. Those documents describe the intended final architecture, even though the implementation is still being built out.
