@@ -41,7 +41,8 @@ export const registerUserService = async (userData: RegisterPayload) => {
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === 'P2002'
     ) {
-      const errorMessage = error.message.includes('constraint: `User_email_key`') ?? ''
+      const errorMessage =
+        error.message.includes('constraint: `User_email_key`') ?? ''
       if (errorMessage) {
         throw new EmailAlreadyExistsError()
       }
@@ -55,4 +56,31 @@ const hashPassword = async (password: string): Promise<string> => {
   // For demonstration purposes, we'll just return the plain password.
   // In a real application, you should never store plain passwords.
   return password
+}
+
+export const loginUserService = async (userData: {
+  email: string
+  password: string
+}) => {
+  // Implement your login logic here (e.g., verify password, generate JWT)
+  // For demonstration purposes, we'll just return a mock user.
+  // In a real application, you should verify the password and return user data.
+  const user = await prisma.user.findUnique({
+    where: { email: userData.email, passwordHash: userData.password }, // In a real application, you would compare the hashed password
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      createdAt: true,
+    },
+  })
+
+  if (!user) {
+    throw new Error('Invalid email or password')
+  }
+
+  // Here you would normally verify the password hash
+  // For demonstration, we assume the password is correct
+
+  return user
 }
