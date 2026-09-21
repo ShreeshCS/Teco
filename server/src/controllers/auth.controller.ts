@@ -40,14 +40,14 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return
     }
 
-    const user = await authService.loginUserService({ email, password })
+    const isLoggedIn = await authService.loginUserService({ email, password })
 
-    if (!user) {
+    if (!isLoggedIn) {
       res.status(401).json({ message: 'Invalid email or password' })
       return
     }
 
-    res.status(200).json(user)
+    res.status(200).json(isLoggedIn)
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Internal server error'
