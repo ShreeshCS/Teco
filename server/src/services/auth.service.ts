@@ -67,20 +67,16 @@ export const loginUserService = async (userData: {
   // In a real application, you should verify the password and return user data.
   const user = await prisma.user.findUnique({
     where: { email: userData.email, passwordHash: userData.password }, // In a real application, you would compare the hashed password
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      createdAt: true,
-    },
   })
 
   if (!user) {
     throw new Error('Invalid email or password')
   }
+  else {
+    return true;
+  }
 
   // Here you would normally verify the password hash
   // For demonstration, we assume the password is correct
 
-  return user
 }
