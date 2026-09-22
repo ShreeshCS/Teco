@@ -15,6 +15,7 @@ import { Prisma } from '../generated/prisma/index.js'
 import { prisma } from '../lib/prisma.js'
 import { EmailAlreadyExistsError } from '../middleware/exceptionHandler.js'
 import { RegisterPayload, SafeUser } from '../types/auth.js'
+import bcrypt from 'bcrypt'
 
 export const registerUserService = async (userData: RegisterPayload) => {
   try {
@@ -52,31 +53,37 @@ export const registerUserService = async (userData: RegisterPayload) => {
 }
 
 const hashPassword = async (password: string): Promise<string> => {
-  // Implement your password hashing logic here (e.g., using bcrypt)
-  // For demonstration purposes, we'll just return the plain password.
-  // In a real application, you should never store plain passwords.
-  return password
+  const hashedPassword = bcrypt.hash(password, 10)
+  return hashedPassword
+}
+
+const verifyPassword = async (
+  normalPassword: string,
+  hashedPassword: string,
+): Promise<boolean> => {
+  return await bcrypt.compare(normalPassword, hashedPassword)
 }
 
 export const loginUserService = async (userData: {
   email: string
   password: string
 }) => {
-  // Implement your login logic here (e.g., verify password, generate JWT)
-  // For demonstration purposes, we'll just return a mock user.
-  // In a real application, you should verify the password and return user data.
   const user = await prisma.user.findUnique({
-    where: { email: userData.email, passwordHash: userData.password }, // In a real application, you would compare the hashed password
+    where: { email: userData.email },
+    select: {
+      passwordHash: true,
+    },
   })
 
-  if (!user) {
-    throw new Error('Invalid email or password')
+  if(user && user.passwordHash) {
+    const isPasswordValid = await verifyPassword(
+      userData.password,
+      user.passwordHash,
+    )
+    if (!isPasswordValid) {
+      throw new Error('Invalid credentials')
+    }
+  } else {
+    throw new Error('User not found')
   }
-  else {
-    return true;
-  }
-
-  // Here you would normally verify the password hash
-  // For demonstration, we assume the password is correct
-
 }
