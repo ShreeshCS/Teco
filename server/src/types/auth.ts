@@ -10,3 +10,8 @@ export interface SafeUser {
   email: string;
   createdAt: Date;
 }
+
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
