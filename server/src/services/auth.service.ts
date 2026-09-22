@@ -13,11 +13,29 @@
 
 import { Prisma } from '../generated/prisma/index.js'
 import { prisma } from '../lib/prisma.js'
-import { EmailAlreadyExistsError } from '../middleware/exceptionHandler.js'
+import {
+  AuthenticationError,
+  EmailAlreadyExistsError,
+} from '../middleware/domain/errors/errors.js'
 import { RegisterPayload, SafeUser } from '../types/auth.js'
 import bcrypt from 'bcrypt'
 
-export const registerUserService = async (userData: RegisterPayload) => {
+const SALT_ROUNDS = 10
+
+const hashPassword = async (password: string): Promise<string> => {
+  return await bcrypt.hash(password, SALT_ROUNDS)
+}
+
+const verifyPassword = async (
+  plainText: string,
+  hashed: string,
+): Promise<boolean> => {
+  return await bcrypt.compare(plainText, hashed)
+}
+
+export const registerUserService = async (
+  userData: RegisterPayload,
+): Promise<SafeUser> => {
   try {
     // Hash the password before storing it in the database
     const passwordHash = await hashPassword(userData.password)
@@ -52,38 +70,36 @@ export const registerUserService = async (userData: RegisterPayload) => {
   }
 }
 
-const hashPassword = async (password: string): Promise<string> => {
-  const hashedPassword = bcrypt.hash(password, 10)
-  return hashedPassword
-}
-
-const verifyPassword = async (
-  normalPassword: string,
-  hashedPassword: string,
-): Promise<boolean> => {
-  return await bcrypt.compare(normalPassword, hashedPassword)
-}
-
 export const loginUserService = async (userData: {
   email: string
   password: string
-}) => {
-  const user = await prisma.user.findUnique({
-    where: { email: userData.email },
-    select: {
-      passwordHash: true,
-    },
-  })
+}): Promise<boolean> => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: userData.email },
+      select: {
+        passwordHash: true,
+      },
+    })
 
-  if(user && user.passwordHash) {
+    if (!user || !user.passwordHash) {
+      throw new AuthenticationError()
+    }
+
     const isPasswordValid = await verifyPassword(
       userData.password,
       user.passwordHash,
     )
+
     if (!isPasswordValid) {
-      throw new Error('Invalid credentials')
+      throw new AuthenticationError()
     }
-  } else {
-    throw new Error('User not found')
+
+    return true
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      console.error('Database error during login:', error.message)
+    }
+    throw error
   }
 }
