@@ -8,7 +8,7 @@ interface ApiErrorResponse {
 const appUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
 const authServiceUrl = `${appUrl}/auth`;
 const registerEndpoint = `${authServiceUrl}/register`;
-// const loginEndpoint = `${authServiceUrl}/login`;
+const loginEndpoint = `${authServiceUrl}/login`;
 
 export async function registerUser(
 	userData: RegistrationUserData,
@@ -24,17 +24,52 @@ export async function registerUser(
 	};
 
 	const response = await fetch(registerEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-    });
-    
-    const data = await response.json().catch(() => null);
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(payload),
+	});
 
-    if (!response.ok) {
-        const errorData = data as ApiErrorResponse | null;
-        throw new Error(errorData?.message || errorData?.error || `Registration failed with status ${response.status}`);
-    }
+	const data = await response.json().catch(() => null);
 
-    return data as SafeUser;
+	if (!response.ok) {
+		const errorData = data as ApiErrorResponse | null;
+		throw new Error(
+			errorData?.message ||
+				errorData?.error ||
+				`Registration failed with status ${response.status}`,
+		);
+	}
+
+	return data as SafeUser;
+}
+
+export async function loginUser(userData: {
+	email: string;
+	password: string;
+}): Promise<boolean> {
+	const { email, password } = userData;
+	if (!email || !password) {
+		throw new Error("Email and password are required");
+	}
+
+	const payload = { email, password };
+
+	const response = await fetch(loginEndpoint, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(payload),
+	});
+
+	const data = await response.json().catch(() => null);
+
+	if (!response.ok) {
+		const errorData = data as ApiErrorResponse | null;
+		throw new Error(
+			errorData?.message ||
+				errorData?.error ||
+				`Login failed with status ${response.status}`,
+		);
+	}
+
+	return data.success as boolean;
 }

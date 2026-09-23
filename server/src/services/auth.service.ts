@@ -13,10 +13,29 @@
 
 import { Prisma } from '../generated/prisma/index.js'
 import { prisma } from '../lib/prisma.js'
-import { EmailAlreadyExistsError } from '../middleware/exceptionHandler.js'
+import {
+  AuthenticationError,
+  EmailAlreadyExistsError,
+} from '../middleware/domain/errors/errors.js'
 import { RegisterPayload, SafeUser } from '../types/auth.js'
+import bcrypt from 'bcrypt'
 
-export const registerUserService = async (userData: RegisterPayload) => {
+const SALT_ROUNDS = 10
+
+const hashPassword = async (password: string): Promise<string> => {
+  return await bcrypt.hash(password, SALT_ROUNDS)
+}
+
+const verifyPassword = async (
+  plainText: string,
+  hashed: string,
+): Promise<boolean> => {
+  return await bcrypt.compare(plainText, hashed)
+}
+
+export const registerUserService = async (
+  userData: RegisterPayload,
+): Promise<SafeUser> => {
   try {
     // Hash the password before storing it in the database
     const passwordHash = await hashPassword(userData.password)
@@ -51,36 +70,36 @@ export const registerUserService = async (userData: RegisterPayload) => {
   }
 }
 
-const hashPassword = async (password: string): Promise<string> => {
-  // Implement your password hashing logic here (e.g., using bcrypt)
-  // For demonstration purposes, we'll just return the plain password.
-  // In a real application, you should never store plain passwords.
-  return password
-}
-
 export const loginUserService = async (userData: {
   email: string
   password: string
-}) => {
-  // Implement your login logic here (e.g., verify password, generate JWT)
-  // For demonstration purposes, we'll just return a mock user.
-  // In a real application, you should verify the password and return user data.
-  const user = await prisma.user.findUnique({
-    where: { email: userData.email, passwordHash: userData.password }, // In a real application, you would compare the hashed password
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      createdAt: true,
-    },
-  })
+}): Promise<boolean> => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: userData.email },
+      select: {
+        passwordHash: true,
+      },
+    })
 
-  if (!user) {
-    throw new Error('Invalid email or password')
+    if (!user || !user.passwordHash) {
+      throw new AuthenticationError()
+    }
+
+    const isPasswordValid = await verifyPassword(
+      userData.password,
+      user.passwordHash,
+    )
+
+    if (!isPasswordValid) {
+      throw new AuthenticationError()
+    }
+
+    return true
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      console.error('Database error during login:', error.message)
+    }
+    throw error
   }
-
-  // Here you would normally verify the password hash
-  // For demonstration, we assume the password is correct
-
-  return user
 }

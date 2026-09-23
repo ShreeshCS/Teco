@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import * as authService from '../services/auth.service.js'
+import { AuthenticationError } from '../middleware/domain/errors/errors.js'
 
 export const registerUser = async (
   req: Request,
@@ -40,15 +41,18 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return
     }
 
-    const user = await authService.loginUserService({ email, password })
+    const isLoggedIn = await authService.loginUserService({ email, password })
 
-    if (!user) {
-      res.status(401).json({ message: 'Invalid email or password' })
-      return
+    if (!isLoggedIn) {
+      throw new AuthenticationError()
     }
 
-    res.status(200).json(user)
+    res.status(200).json(isLoggedIn)
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      res.status(401).json({ message: error.message })
+      return
+    }
     const message =
       error instanceof Error ? error.message : 'Internal server error'
 

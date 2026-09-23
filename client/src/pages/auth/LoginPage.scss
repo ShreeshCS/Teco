@@ -1,0 +1,33 @@
+.retro-pixel-text {
+  /* Use the retro font with a monospace fallback */
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  
+  /* CRITICAL: Keep edges sharp and prevent browser blurring */
+  font-smooth: never;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  font-synthesis-weight: none;
+  
+  /* Pixel fonts display best at exact multiples of their base size (usually 8px or 16px) */
+  font-size: 18px; 
+  line-height: 1.5;
+
+  .auth-switch-prompt {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: 1px;
+
+    a {
+      color: #00f0ff; /* Electric Cyan retro accent */
+      text-decoration: none;
+      margin-left: 0.5rem;
+      transition: text-shadow 0.2s ease;
+
+      &:hover {
+        text-decoration: underline;
+        text-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
+      }
+    }
+  }
+}
