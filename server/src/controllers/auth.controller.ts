@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import * as authService from '../services/auth.service.js'
 import { AuthenticationError } from '../middleware/domain/errors/errors.js'
+import { signAccessToken } from '../lib/jwt.js'
 
 export const registerUser = async (
   req: Request,
@@ -36,18 +37,21 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body
 
-    if (!email || !password) {
-      res.status(400).json({ message: 'Email and password are required' })
-      return
-    }
+    const user = await authService.loginUserService({ email, password })
 
-    const isLoggedIn = await authService.loginUserService({ email, password })
+    const token = signAccessToken({
+      userId: user.id,
+      email: user.email,
+    })
 
-    if (!isLoggedIn) {
+    if (!user) {
       throw new AuthenticationError()
     }
 
-    res.status(200).json(isLoggedIn)
+    res.status(200).json({
+      user,
+      token,
+    })
   } catch (error) {
     if (error instanceof AuthenticationError) {
       res.status(401).json({ message: error.message })
