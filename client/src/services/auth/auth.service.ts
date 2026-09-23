@@ -5,7 +5,7 @@ interface ApiErrorResponse {
 	error?: string;
 }
 
-const appUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const appUrl = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 const authServiceUrl = `${appUrl}/auth`;
 const registerEndpoint = `${authServiceUrl}/register`;
 const loginEndpoint = `${authServiceUrl}/login`;
