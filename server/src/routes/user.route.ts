@@ -1,11 +1,8 @@
-import { Router } from "express";
-import { getUsers } from "../controllers/user.controller.js";
+import { Router } from 'express'
+import { getUsers } from '../controllers/user.controller.js'
 
-const router = Router();
-const basePath = "/users";
+const router = Router()
 
-const getUsersRoute = `${basePath}/all`;
+router.get('/details', getUsers)
 
-router.get(getUsersRoute, getUsers);
-
-export default router;
+export default router

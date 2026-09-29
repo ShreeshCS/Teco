@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent, type SubmitEvent } from "react";
 import { TextInput, Button, Message } from "../ui";
 import { loginUser } from "../../services/auth/auth.service";
+import { useNavigate } from "react-router-dom";
 
 type LoginFormData = {
 	email: string;
@@ -17,6 +18,7 @@ export default function LoginForm() {
 	const [message, setMessage] = useState("");
 	const [isError, setIsError] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
+	const navigate = useNavigate();
 
 	const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = event.target;
@@ -35,6 +37,7 @@ export default function LoginForm() {
 
 			if (isLoggedIn) {
 				setMessage("Login successful!");
+				navigate("/chat", { replace: true });
 				setForm(initialForm);
 			}
 		} catch (err: unknown) {

@@ -3,6 +3,7 @@ import "./App.css";
 import AuthLayout from "./layouts/AuthLayout";
 import RegisterPage from "./pages/auth/RegisterPage";
 import LoginPage from "./pages/auth/LoginPage";
+import ChatInterface from "./pages/chat/ChatInterface";
 
 function App() {
 	return (
@@ -13,9 +14,10 @@ function App() {
 					<Route path="/register" element={<RegisterPage />} />
 					<Route path="/login" element={<LoginPage />} />
 				</Route>
-				
+
 				{/* Default route redirect */}
 				<Route path="/" element={<Navigate to="/login" replace />} />
+				<Route path="/chat" element={<ChatInterface />} />
 				<Route path="*" element={<div>404: Not Found</div>} />
 			</Routes>
 		</BrowserRouter>

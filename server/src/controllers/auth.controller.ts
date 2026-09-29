@@ -39,14 +39,14 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 
     const user = await authService.loginUserService({ email, password })
 
+    if (!user) {
+      throw new AuthenticationError()
+    }
+
     const token = signAccessToken({
       userId: user.id,
       email: user.email,
     })
-
-    if (!user) {
-      throw new AuthenticationError()
-    }
 
     res.status(200).json({
       user,
