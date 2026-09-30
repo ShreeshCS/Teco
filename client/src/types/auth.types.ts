@@ -5,9 +5,18 @@ export interface RegistrationUserData {
 	confirmPassword: string;
 }
 
-export interface SafeUser {
+export interface LoginUserData {
+	email: string;
+	password: string;
+}
+export interface SafeUserDetails {
 	id: string;
 	name: string;
 	email: string;
 	createdAt: string;
+}
+
+export interface LoginResponseDetails {
+	user: { id: string; email: string };
+	token: string;
 }

@@ -1,23 +1,15 @@
-/**
- * Authentication Service
- *
- * Responsibility: Business logic and database operations for user authentication.
- *
- * This service handles user registration with the following operations:
- * - Imports prisma from ../lib/prisma.js for database operations
- * - Hashes plaintext passwords using bcrypt or argon2 for security
- * - Inserts new users via prisma.user.create()
- * - Catches Prisma unique constraint errors (P2002) on email field and throws domain errors (EmailAlreadyExistsError)
- * - Uses Prisma's select to return only safe attributes (id, name, email, createdAt), omitting passwordHash
- */
-
 import { Prisma } from '../generated/prisma/index.js'
 import { prisma } from '../lib/prisma.js'
 import {
   AuthenticationError,
   EmailAlreadyExistsError,
 } from '../middleware/domain/errors/errors.js'
-import { RegisterPayload, SafeUser } from '../types/auth.types.js'
+import {
+  LoginPayload,
+  LoginResponseDetails,
+  RegisterPayload,
+  SafeUserDetails,
+} from '../types/auth.types.js'
 import bcrypt from 'bcrypt'
 
 const SALT_ROUNDS = 10
@@ -35,12 +27,12 @@ const verifyPassword = async (
 
 export const registerUserService = async (
   userData: RegisterPayload,
-): Promise<SafeUser> => {
+): Promise<SafeUserDetails> => {
   try {
     // Hash the password before storing it in the database
     const passwordHash = await hashPassword(userData.password)
 
-    const user: SafeUser = await prisma.user.create({
+    const user: SafeUserDetails = await prisma.user.create({
       data: {
         name: userData.name,
         email: userData.email,
@@ -70,10 +62,9 @@ export const registerUserService = async (
   }
 }
 
-export const loginUserService = async (userData: {
-  email: string
-  password: string
-}): Promise<{ id: string; email: string }> => {
+export const loginUserService = async (
+  userData: LoginPayload,
+): Promise<LoginResponseDetails> => {
   try {
     const user = await prisma.user.findUnique({
       where: { email: userData.email },
