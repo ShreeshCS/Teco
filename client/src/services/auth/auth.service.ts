@@ -1,17 +1,16 @@
-import type { RegistrationUserData, SafeUser } from "../../types/auth.types";
+import type {
+	LoginResponseDetails,
+	LoginUserData,
+	RegistrationUserData,
+	SafeUserDetails,
+} from "../../types/auth.types";
 import routes from "../../constants/urls";
-interface ApiErrorResponse {
-	message?: string;
-	error?: string;
-}
+import { apiClient } from "../../lib/api/apiClient";
 
-const appUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-const registerUrl = `${appUrl}${routes.api.auth.register}`;
-const loginUrl = `${appUrl}${routes.api.auth.login}`;
+const registerUrl = routes.api.auth.register;
+const loginUrl = routes.api.auth.login;
 
-export async function registerUser(
-	userData: RegistrationUserData,
-): Promise<SafeUser> {
+export async function registerUser(userData: RegistrationUserData) {
 	if (!userData) {
 		throw new Error("Invalid user data");
 	}
@@ -22,58 +21,24 @@ export async function registerUser(
 		password: userData.password,
 	};
 
-	const response = await fetch(registerUrl, {
+	return await apiClient<SafeUserDetails>(registerUrl, {
 		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(payload),
+		payload,
 	});
-
-	const data = await response.json().catch(() => null);
-
-	if (!response.ok) {
-		const errorData = data as ApiErrorResponse | null;
-		throw new Error(
-			errorData?.message ||
-				errorData?.error ||
-				`Registration failed with status ${response.status}`,
-		);
-	}
-
-	return data as SafeUser;
 }
 
-export async function loginUser(userData: {
-	email: string;
-	password: string;
-}): Promise<boolean> {
+export async function loginUser(userData: LoginUserData) {
 	const { email, password } = userData;
 	if (!email || !password) {
 		throw new Error("Email and password are required");
 	}
 
-	const payload = { email, password };
-
-	const response: Response = await fetch(loginUrl, {
+	const response = await apiClient<LoginResponseDetails>(loginUrl, {
 		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(payload),
+		payload: userData,
 	});
 
-	const data: {
-		user: string;
-		token: string;
-	} = await response.json().catch(() => null);
+	localStorage.setItem("token", response.token);
 
-	if (!response.ok) {
-		const errorData = data as ApiErrorResponse | null;
-		throw new Error(
-			errorData?.message ||
-				errorData?.error ||
-				`Login failed with status ${response.status}`,
-		);
-	}
-
-	localStorage.setItem("token", data.token);
-
-	return data ? true : false;
+	return response ? true : false;
 }
