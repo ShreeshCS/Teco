@@ -35,15 +35,12 @@ const routes = {
 }
 
 // 1. Get '/api' directly
-console.log(`${routes.api}`)
 // Output: /api
 
 // 2. Get '/api/auth/login' directly using dot notation
-console.log(routes.api.auth.login)
 // Output: /api/auth/login
 
 // Bonus: You can also get mid-level paths directly
-console.log(`${routes.api.auth}`)
 // Output: /api/auth
 
 export default routes
