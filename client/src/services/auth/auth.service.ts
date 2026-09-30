@@ -1,14 +1,13 @@
 import type { RegistrationUserData, SafeUser } from "../../types/auth.types";
-
+import routes from "../../constants/urls";
 interface ApiErrorResponse {
 	message?: string;
 	error?: string;
 }
 
 const appUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-const authServiceUrl = `${appUrl}/auth`;
-const registerEndpoint = `${authServiceUrl}/register`;
-const loginEndpoint = `${authServiceUrl}/login`;
+const registerUrl = `${appUrl}${routes.api.auth.register}`;
+const loginUrl = `${appUrl}${routes.api.auth.login}`;
 
 export async function registerUser(
 	userData: RegistrationUserData,
@@ -23,7 +22,7 @@ export async function registerUser(
 		password: userData.password,
 	};
 
-	const response = await fetch(registerEndpoint, {
+	const response = await fetch(registerUrl, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(payload),
@@ -54,13 +53,16 @@ export async function loginUser(userData: {
 
 	const payload = { email, password };
 
-	const response = await fetch(loginEndpoint, {
+	const response: Response = await fetch(loginUrl, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(payload),
 	});
 
-	const data = await response.json().catch(() => null);
+	const data: {
+		user: string;
+		token: string;
+	} = await response.json().catch(() => null);
 
 	if (!response.ok) {
 		const errorData = data as ApiErrorResponse | null;
@@ -71,5 +73,7 @@ export async function loginUser(userData: {
 		);
 	}
 
-	return data.success as boolean;
+	localStorage.setItem("token", data.token);
+
+	return data ? true : false;
 }

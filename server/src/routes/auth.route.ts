@@ -1,13 +1,9 @@
-import { Router } from "express";
-import { loginUser, registerUser } from "../controllers/auth.controller.js";
+import { Router } from 'express'
+import { loginUser, registerUser } from '../controllers/auth.controller.js'
 
-const router = Router(); // TODO: instead of having multiple instances of router in the server, try sharing instance from one place
-const basePath = "/auth";
+const router = Router()
 
-const registerRoute = `${basePath}/register`;
-const logoinRoute = `${basePath}/login`;
+router.post('/register', registerUser)
+router.post('/login', loginUser)
 
-router.post(registerRoute, registerUser);
-router.post(logoinRoute, loginUser);
-
-export default router;
+export default router

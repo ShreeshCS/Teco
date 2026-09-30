@@ -17,7 +17,7 @@ import {
   AuthenticationError,
   EmailAlreadyExistsError,
 } from '../middleware/domain/errors/errors.js'
-import { RegisterPayload, SafeUser } from '../types/auth.js'
+import { RegisterPayload, SafeUser } from '../types/auth.types.js'
 import bcrypt from 'bcrypt'
 
 const SALT_ROUNDS = 10
@@ -73,11 +73,13 @@ export const registerUserService = async (
 export const loginUserService = async (userData: {
   email: string
   password: string
-}): Promise<boolean> => {
+}): Promise<{ id: string; email: string }> => {
   try {
     const user = await prisma.user.findUnique({
       where: { email: userData.email },
       select: {
+        id: true,
+        email: true,
         passwordHash: true,
       },
     })
@@ -95,7 +97,10 @@ export const loginUserService = async (userData: {
       throw new AuthenticationError()
     }
 
-    return true
+    return {
+      id: user.id,
+      email: user.email,
+    }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       console.error('Database error during login:', error.message)
