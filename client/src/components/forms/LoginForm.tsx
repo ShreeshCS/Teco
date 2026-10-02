@@ -28,7 +28,6 @@ export default function LoginForm() {
 	const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setIsLoading(true);
-		setMessage("");
 		setIsError(false);
 
 		try {
@@ -36,14 +35,14 @@ export default function LoginForm() {
 			console.log("Submitting login for:", form.email);
 
 			if (isLoggedIn) {
-				setMessage("Login successful!");
-				navigate("/chat", { replace: true });
+				console.log("Login successful!");
+				navigate("/chat", { replace: true }); // Replace browser history so that pressing back won't go to login page again if logged in
 				setForm(initialForm);
 			}
-		} catch (err: unknown) {
+		} catch (err) {
 			setIsError(true);
 			if (err instanceof Error) {
-				setMessage(err.message);
+				setMessage(err.message); // DO NOT show server error in FE
 			} else {
 				setMessage("Invalid credentials. Please try again.");
 			}

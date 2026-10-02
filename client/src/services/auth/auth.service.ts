@@ -38,7 +38,13 @@ export async function loginUser(userData: LoginUserData) {
 		payload: userData,
 	});
 
-	localStorage.setItem("token", response.token);
+	if (response && response.user && response.token) {
+		localStorage.setItem("token", response.token); // Setting fresh token on Log in
+		return true;
+	}
+	return false;
+}
 
-	return response ? true : false;
+export function logoutUser() {
+	localStorage.removeItem("token");
 }
