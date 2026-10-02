@@ -5,7 +5,8 @@
   justify-content: center;
   align-items: center;
   padding: 1.5rem;
-  background-color: #0b0813; /* Dark Midnight/Synthwave aesthetic */
+  background: var(--auth-bg);
+  transition: background 0.2s ease;
 }
 
 .auth-header {
@@ -19,34 +20,34 @@
 
 .auth-tagline {
   font-size: 0.875rem;
-  color: #94a3b8;
+  color: var(--subtle);
   margin-top: 0.25rem;
 }
 
 .auth-card {
   width: 100%;
   max-width: 450px;
-  background-color: #120e24;
-  border: 1px solid #1e1b4b;
+  background: var(--auth-panel);
+  border: 1px solid var(--auth-panel-border);
   border-radius: 12px;
   padding: 2rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 25px -5px var(--shadow);
 }
 
 .auth-footer {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--subtle);
 }
 
 .auth-switch-prompt {
   text-align: center;
   margin-top: 1.25rem;
   font-size: 0.875rem;
-  color: #94a3b8;
+  color: var(--subtle);
 }
 
 .auth-switch-prompt a {
-  color: #00f0ff;
+  color: var(--accent);
   text-decoration: none;
   font-weight: 600;
 }

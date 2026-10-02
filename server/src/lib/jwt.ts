@@ -22,7 +22,7 @@ export const signAccessToken = (payload: TokenPayload): string => {
 }
 
 /**
- * Synchronously or asynchronously verifies a JWT
+ * Synchronously verifies a JWT
  */
 export const verifyAccessToken = (token: string): TokenPayload => {
   return jwt.verify(token, JWT_SECRET) as TokenPayload

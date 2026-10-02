@@ -27,9 +27,9 @@ const routes = {
       },
 
       // Individual actions
-      get details() {
-        return `${routes.api.user}/details`
-      },
+      get me() {
+        return `${routes.api.user}/me`
+      }
     },
   },
 }
