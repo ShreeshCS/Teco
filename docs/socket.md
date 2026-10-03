@@ -1,5 +1,7 @@
 # Real-Time Socket.IO Design
 
+> **Design proposal only:** Socket.IO is not installed or started by the current server, and the client has no socket integration. The events and lifecycle below describe a future implementation.
+
 ## Purpose
 
 Socket.IO delivers live updates after the server has performed and persisted an operation. It improves responsiveness; it never replaces the HTTP API or database persistence.

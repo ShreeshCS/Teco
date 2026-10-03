@@ -1,56 +1,64 @@
 # Teco Architecture Overview
 
-Teco is a V1 real-time, one-to-one chat application. The browser client calls the server through HTTP and receives live events through Socket.IO. The server applies all application rules and is the only component that accesses PostgreSQL through Prisma.
+Teco currently has a React + Vite client, an Express API, JWT authentication, and PostgreSQL access through Prisma. Registration, login, session verification, and guarded client routes are implemented. Conversation workflows, message APIs, and Socket.IO delivery remain design work; the `/chat` screen is a placeholder.
+
+## Current Request Path
 
 ```mermaid
 flowchart LR
-    Client["React + Vite + TypeScript"]
-    Server["Node.js + Express + Socket.IO"]
-    Database["PostgreSQL accessed through Prisma"]
-
-    Client -->|"HTTP API"| Server
-    Client <-->|"Socket.IO"| Server
-    Server -->|"Prisma"| Database
+    Client["React + Vite"] -->|"HTTP and Bearer JWT"| Server["Node.js + Express"]
+    Server -->|"Prisma Client"| Database["PostgreSQL"]
 ```
+
+The browser does not connect directly to PostgreSQL. The server owns authentication, database access, and HTTP responses. Socket.IO is not currently part of the running application.
 
 ## Repository Layout
 
 ```text
 Teco/
-├── client/              # React application
-├── server/              # Express application and Prisma schema
-│   └── prisma/          # Current Prisma schema and migrations
-├── docs/                # Project design documentation
-├── docker-compose.yml   # Local PostgreSQL service
+├── client/                 # React application and browser routes
+├── server/                 # Express API and Prisma integration
+│   ├── prisma/             # Schema, migrations, and seed script
+│   └── src/                # Routes, controllers, services, middleware
+├── docs/                   # Current behavior and proposed designs
+├── docker-compose.yml      # Local PostgreSQL and Adminer
 ├── .env.example
-├── README.md
-└── .env                 # Local environment file
+└── README.md
 ```
 
 ## Responsibilities
 
 | Area | Responsibility |
 | --- | --- |
-| `client/` | Browser UI, local app state, and HTTP calls to the server. |
-| `server/` | HTTP API, Prisma access, and future business rules. Auth and Socket.IO are not implemented yet. |
-| `server/prisma/` | Prisma schema and migration files for the current database model. |
-| PostgreSQL | Persistent storage for users, conversations, participants, and messages. |
+| `client/` | Registration and login UI, auth context, route guards, and HTTP API calls. |
+| `server/` | Auth endpoints, JWT verification, user endpoints, and Prisma-backed database operations. |
+| `server/prisma/` | Database schema, committed migrations, and a local seed script. |
+| PostgreSQL | Persistent user, conversation, participant, and message records. |
 
-## Detailed Design Documents
+## Implemented API
+
+| Method | Route | Access |
+| --- | --- | --- |
+| `POST` | `/api/auth/register` | Public |
+| `POST` | `/api/auth/login` | Public |
+| `GET` | `/api/user/me` | JWT required |
+| `GET` | `/api/user/details` | JWT required |
+| `GET` | `/health` | Public |
+
+All `/api/user` routes use JWT middleware. See [Authentication flow](authFlow.md) for request and response details.
+
+## Design Documents
 
 - [Frontend architecture](frontend.md)
 - [Backend architecture](backend.md)
 - [Database design](database.md)
-- [Real-time Socket.IO design](socket.md)
-
-## Current implementation status
-
-The project is in a foundation stage. The server currently exposes a simple health endpoint, the client is still the default Vite starter UI, and the rest of the chat features are being designed and implemented incrementally.
+- [New chat flow proposal](new-chat-flow.md)
+- [Message lifecycle proposal](messageLifeCycle.md)
+- [Socket.IO proposal](socket.md)
 
 ## V1 Boundary
 
-V1 includes registration and login, direct one-to-one conversations, persistent messages, and live message delivery. Each conversation has exactly two participants. Group chat is intentionally deferred to V2.
-
+The intended V1 is a one-to-one chat application with exactly two participants per conversation. The current database schema contains users, conversations, participants, and messages, but the server does not yet expose conversation or message endpoints and the client does not yet implement those workflows. Group chat remains a later extension.
 ## V2: Group Chat
 
 V2 can add a conversation type, group name and avatar, more than two participants, member-management actions, participant roles, and group-specific UI and authorization. These additions extend the same client → server → Prisma → PostgreSQL architecture.

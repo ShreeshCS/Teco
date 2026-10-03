@@ -1,3 +1,5 @@
+> **Design proposal only:** The current application has no message API, message UI, or Socket.IO delivery. This diagram shows the planned flow.
+
                     ┌──────────────┐
                     │     User     │
                     └──────┬───────┘

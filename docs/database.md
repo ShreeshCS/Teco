@@ -2,7 +2,7 @@
 
 ## Current implementation
 
-The actual Prisma schema for this repo lives in `server/prisma/schema.prisma`. The current implementation defines the models `User`, `Conversation`, `Conversation_Participant`, and `Message` in that file. PostgreSQL is still configured via Docker Compose, and the browser client does not connect directly to the database.
+The actual Prisma schema for this repo lives in `server/prisma/schema.prisma`. It defines `User`, `Conversation`, `Conversation_Participant`, and `Message`. PostgreSQL is configured through Docker Compose, and the browser client does not connect directly to the database. Registration and authentication use the `User` model; conversation and message application flows are not implemented yet.
 
 ## Purpose
 
@@ -14,7 +14,7 @@ PostgreSQL is Teco's persistent store. Prisma owns the schema definition and mig
 server/
 ├── prisma/
 │   ├── schema.prisma       # Canonical Prisma schema for the app
-│   ├── seed.ts            # Local seed script (when added)
+│   ├── seed.ts            # Destructive local sample-data seed script
 │   └── migrations/        # Committed migration files
 └── src/
     └── generated/prisma/  # Generated Prisma Client, refreshed via `npx prisma generate`
@@ -60,12 +60,12 @@ cd server
 npm run seed
 ```
 
-This script creates:
+This script first deletes all existing messages, conversation participants, conversations, and users, then creates:
 - Two sample users (Alice and Bob)
 - One conversation between them
 - Four sample messages exchanged in the conversation
 
-The seed script runs inside a transaction and clears existing data before inserting, so it is safe to run multiple times.
+The deletion is wrapped in a transaction, but it removes all current application data. Use this only against a disposable development database. The seeded password hashes are placeholders, so the sample accounts cannot be used to log in.
 
 ### View Data Visually
 
@@ -78,25 +78,20 @@ npx prisma studio
 
 This opens an interactive UI at `http://localhost:5555` where you can inspect and edit records directly.
 
-## V1 Scope
+## V1 Data Model and Application Status
 
-V1 supports direct, one-to-one conversations only. Each conversation has exactly two `ConversationParticipant` records. Messages belong to one conversation and one sending user.
+The schema provides tables for direct, one-to-one conversations, participants, and messages. The current server does not yet expose conversation or message endpoints, and no application service enforces exactly two participants. Those are V1 design goals, not current runtime guarantees.
 
 ## Logical Data Model
 
 ![Teco V1 entity relationship diagram](./ER-Diagram.png)
 
 ```mermaid
-flowchart LR
-    User["User"]
-    Conversation["Conversation one-to-one in V1"]
-    Participant["ConversationParticipant links one user to one conversation"]
-    Message["Message"]
-
-    User -->|"belongs to"| Participant
-    Conversation -->|"has exactly two"| Participant
-    User -->|"sends"| Message
-    Conversation -->|"contains"| Message
+erDiagram
+    User ||--o{ Conversation_Participant : participates
+    Conversation ||--o{ Conversation_Participant : includes
+    User ||--o{ Message : sends
+    Conversation ||--o{ Message : contains
 ```
 
 ## Design Reasoning
@@ -105,7 +100,7 @@ flowchart LR
 
 Each message stores its conversation and its sender, rather than a receiver ID. In a one-to-one conversation, the receiver is the other participant. Storing a receiver on every message would duplicate membership data and could allow an inconsistent message whose receiver is not part of the conversation.
 
-The participant table also leaves a clear path to group chat later: a group conversation would add participant rows instead of requiring a different message structure. V1 still deliberately enforces exactly two participants per conversation.
+The participant table leaves a path to group chat later: a group conversation would add participant rows instead of requiring a different message structure. Enforcing exactly two participants for V1 remains an application-level requirement for the future conversation service.
 
 ## Tables
 
@@ -157,6 +152,8 @@ The current implementation uses the actual Prisma field names in `server/prisma/
 
 ## Relationship Rules
 
+The following are application-level design rules for the planned chat features. The current schema enforces foreign keys and the participant composite key, but the current server does not yet implement conversation or message services that enforce these rules.
+
 ```mermaid
 sequenceDiagram
     participant S as Conversation service
@@ -172,10 +169,10 @@ sequenceDiagram
 ```
 
 - A user may be in many direct conversations.
-- A V1 conversation must have exactly two distinct users.
-- The service prevents duplicate direct conversations for the same pair of users.
+- A V1 conversation should have exactly two distinct users.
+- The conversation service should prevent duplicate direct conversations for the same pair of users.
 - A message sender must be a participant in the message's conversation.
-- Foreign keys prevent messages and participant records from pointing to missing users or conversations.
+- Database foreign keys prevent messages and participant records from pointing to missing users or conversations.
 
 ## Indexes and Constraints
 
@@ -234,12 +231,14 @@ model Conversation_Participant {
 
 ## Prisma workflow
 
-Use the repo-local workflow in this order:
+Use the repo-local workflow in this order. Docker Compose reads the root `.env`; Prisma CLI and the server load environment variables from `server/.env`.
 
 ```bash
 cp .env.example .env
+cp .env server/.env
+docker compose up -d
 cd server
-npm install
+npm ci
 npx prisma migrate deploy
 npx prisma generate
 node --env-file ../.env --input-type=module <<'EOF'
@@ -261,7 +260,7 @@ Each schema change is captured as a migration in `server/prisma/migrations/`. Ap
 Committed in Git:
 - `server/prisma/schema.prisma`
 - `server/prisma/migrations/**`
-- `server/prisma/seed.ts` if it exists
+- `server/prisma/seed.ts`
 
 Local-only and not committed:
 - `.env` and `.env.*`
