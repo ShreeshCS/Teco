@@ -1,4 +1,10 @@
-import { useState, useEffect, type ReactNode } from "react";
+import {
+	useState,
+	useEffect,
+	type ReactNode,
+	useCallback,
+	useMemo,
+} from "react";
 import { AuthContext } from "./AuthContext";
 import type { SafeUserDetails } from "../types/auth.types";
 import { pingMe } from "../services/user/user.service";
@@ -11,6 +17,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const [isLoading, setIsLoading] = useState<boolean>(true);
 	const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
+	const signIn = useCallback(
+		(nextUser: SafeUserDetails, nextToken: string) => {
+			localStorage.setItem("token", nextToken);
+			setUser(nextUser);
+			setToken(nextToken);
+			setIsAuthenticated(true);
+			setIsLoading(false);
+		},
+		[],
+	);
+
+	const signOut = useCallback(() => {
+		localStorage.removeItem("token");
+		setUser(null);
+		setToken(null);
+		setIsAuthenticated(false);
+		setIsLoading(false);
+	}, []);
+
 	useEffect(() => {
 		const verifySession = async () => {
 			const storedToken = localStorage.getItem("token");
@@ -22,33 +47,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 			try {
 				const response = await pingMe(storedToken);
 				if (response) {
-					setUser(response);
-					setIsAuthenticated(true);
+					signIn(response, storedToken);
 					console.log("Session verification success");
 				}
 			} catch (error) {
-				setIsAuthenticated(false);
+				signOut();
 				console.error("Session verification failed:", error);
-			} finally {
-				setIsLoading(false);
 			}
 		};
 
 		verifySession();
-	}, []);
+	}, [signIn, signOut]);
 
-	return (
-		<AuthContext
-			value={{
-				user,
-				token,
-				setToken,
-				setUser,
-				isLoading,
-				isAuthenticated,
-			}}
-		>
-			{children}
-		</AuthContext>
+	const value = useMemo(
+		() => ({
+			user,
+			token,
+			isLoading,
+			isAuthenticated,
+			signIn,
+			signOut,
+		}),
+		[user, token, isLoading, isAuthenticated, signIn, signOut],
 	);
+
+	return <AuthContext value={value}>{children}</AuthContext>;
 }

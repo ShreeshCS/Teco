@@ -2,6 +2,7 @@ import { useState, type ChangeEvent, type SubmitEvent } from "react";
 import { TextInput, Button, Message } from "../ui";
 import { loginUser } from "../../services/auth/auth.service";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 
 type LoginFormData = {
 	email: string;
@@ -17,8 +18,8 @@ export default function LoginForm() {
 	const [form, setForm] = useState<LoginFormData>(initialForm);
 	const [message, setMessage] = useState("");
 	const [isError, setIsError] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
 	const navigate = useNavigate();
+	const { signIn, isLoading } = useAuth();
 
 	const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = event.target;
@@ -27,15 +28,15 @@ export default function LoginForm() {
 
 	const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		setIsLoading(true);
 		setIsError(false);
 
 		try {
-			const isLoggedIn = await loginUser(form);
+			const { user, token } = await loginUser(form);
 			console.log("Submitting login for:", form.email);
 
-			if (isLoggedIn) {
+			if (user && token) {
 				console.log("Login successful!");
+				signIn(user, token);
 				navigate("/chat", { replace: true }); // Replace browser history so that pressing back won't go to login page again if logged in
 				setForm(initialForm);
 			}
@@ -46,8 +47,6 @@ export default function LoginForm() {
 			} else {
 				setMessage("Invalid credentials. Please try again.");
 			}
-		} finally {
-			setIsLoading(false);
 		}
 	};
 
