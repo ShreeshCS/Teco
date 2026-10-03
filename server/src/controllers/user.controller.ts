@@ -27,11 +27,11 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
       return
     }
 
-    res.status(200).json({ user })
+    res.status(200).json(user)
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Internal server error'
     console.error('Error in getMe controller:', message)
-    res.status(500).json({ message })
+    res.status(500).json('Internal server error')
   }
 }

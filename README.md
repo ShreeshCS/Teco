@@ -1,18 +1,15 @@
 # Teco
 
-Teco is a learning project for building a real-time one-to-one chat app. The current repository is in its foundation stage: the React + Vite frontend, Express API, PostgreSQL service, and Prisma schema are set up, but the actual chat features, authentication, and real-time messaging layer are not implemented yet.
+Teco is a learning project for a real-time, one-to-one chat application. The repository currently contains a React + Vite client, an Express + TypeScript API, PostgreSQL with Prisma, and a working registration and JWT authentication flow. Conversation management, message delivery, and real-time messaging are not implemented yet; the chat screen is currently a placeholder.
 
 ## Current project state
 
-This repo currently includes:
-
-- A React + Vite client in `client/`
-- An Express + TypeScript server in `server/`
-- A PostgreSQL instance managed by Docker Compose
-- A Prisma schema for users, conversations, participants, and messages
-- A basic `/health` endpoint on the server
-
-The app is not yet a working chat application. The client is still the default Vite starter UI, and the server does not yet include auth, Socket.IO, conversation endpoints, or message delivery logic.
+- Registration stores users with bcrypt-hashed passwords.
+- Login returns a JWT and user details. The client stores the token and updates its authentication context.
+- Protected client routes require an authenticated session. On page load, a stored token is checked through `GET /api/user/me`.
+- The server protects user routes with JWT authentication and requires `JWT_SECRET` to start.
+- PostgreSQL is managed by Docker Compose, and Prisma manages the database schema and migrations.
+- Conversations, contacts, message APIs, and Socket.IO delivery remain future work.
 
 ## Repository structure
 
@@ -20,170 +17,127 @@ The app is not yet a working chat application. The client is still the default V
 Teco/
 ├── .env.example
 ├── docker-compose.yml
-├── README.md
-├── client/                 # React + Vite frontend
-│   ├── src/
-│   ├── package.json
-│   └── ...
+├── client/                 # React + Vite application
 ├── server/                 # Express + TypeScript API
-│   ├── prisma/
-│   ├── src/
-│   ├── package.json
-│   └── ...
-├── docs/                   # Design notes and architecture docs
-├── shared/
-└── .env                    # Local environment file
+│   ├── prisma/             # Schema, migrations, and seed script
+│   └── src/
+├── docs/                   # Architecture and feature notes
+└── README.md
 ```
 
 ## Prerequisites
 
 - Node.js 20 or later
 - npm
-- Docker Desktop
+- Docker Desktop (for local PostgreSQL)
 
-## Prisma + PostgreSQL setup
+## Configure the environment
 
-Follow this order for a reproducible setup from a fresh checkout.
-
-1. Configure the local environment file from the example:
+From the repository root, create a local environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Start PostgreSQL and Adminer from the repo root:
+Set `JWT_SECRET` to a private, randomly generated value before running the server. The server refuses to start if it is missing or blank. Keep `.env` out of version control.
+
+The example configures PostgreSQL at `localhost:5432`, the API at port `3000`, and the Vite client at port `5173`. Docker Compose reads the root `.env`; the server loads `server/.env`, so copy the configured file there as well:
 
 ```bash
-cd /Users/shreesh/Desktop/Repos/Teco
+cp .env server/.env
+```
+
+The API's current CORS configuration allows `http://localhost:5173`. The client defaults to `http://localhost:3000`; to override that URL, put `VITE_API_URL` in `client/.env.local` because Vite loads environment files from the client directory.
+
+## Start PostgreSQL and the API
+
+Run these commands from the repository root:
+
+```bash
 docker compose up -d
-```
-
-3. Install the server dependencies:
-
-```bash
 cd server
-npm install
-```
-
-4. Apply the committed Prisma migration to the local database:
-
-```bash
-cd server
+npm ci
 npx prisma migrate deploy
-```
-
-5. Generate the Prisma Client that the server imports:
-
-```bash
-cd server
 npx prisma generate
-```
-
-6. Run a database connectivity check:
-
-```bash
-cd server
-node --env-file ../.env --input-type=module <<'EOF'
-import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaClient } from './src/generated/prisma/client.js'
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
-const prisma = new PrismaClient({ adapter })
-const result = await prisma.$queryRaw`SELECT 1 AS ok`
-console.log(JSON.stringify(result))
-await prisma.$disconnect()
-EOF
-```
-
-Expected output:
-
-```json
-[{"ok":1}]
-```
-
-This confirms the server can reach PostgreSQL with the configured `DATABASE_URL`.
-
-### Prisma file locations
-
-- Schema: `server/prisma/schema.prisma`
-- Migrations: `server/prisma/migrations/`
-- Seed script: `server/prisma/seed.ts` (if added later)
-- Generated client: `server/src/generated/prisma/`
-
-### What is committed vs local
-
-Committed to Git:
-- `server/prisma/schema.prisma`
-- `server/prisma/migrations/**`
-- any intentionally versioned Prisma seed or config files
-
-Local-only / not committed:
-- `.env`, `.env.local`, other environment files
-- Docker volume data (`postgres-data`)
-- generated Prisma client output under `server/src/generated/prisma/` after `npx prisma generate`
-
-The generated Prisma client is not handwritten; it is refreshed when the schema changes and should be regenerated rather than edited directly.
-
-## Run Client locally
-Install and start the client in a second terminal:
-
-```bash
-cd client
-npm install
 npm run dev
 ```
 
-The client runs at `http://localhost:5173`.
-
-## Current runtime behavior
-
-The current server exposes a simple health check:
+The API listens at `http://localhost:3000`. Its health endpoint is:
 
 ```bash
 curl http://localhost:3000/health
 ```
 
-It currently returns:
+Prisma files are located here:
 
-```json
-"Hello from Server!"
-```
+- Schema: `server/prisma/schema.prisma`
+- Migrations: `server/prisma/migrations/`
+- Seed script: `server/prisma/seed.ts`
+- Generated client: `server/src/generated/prisma/`
 
-The client currently uses the default Vite starter UI and calls this health endpoint on button click.
+When changing the schema in development, create a migration from `server/` with `npx prisma migrate dev --name <migration-name>`, then regenerate the client with `npx prisma generate`. Generated client files are local build output and should not be edited by hand.
 
-## Available commands
+## Start the client
 
-Run these inside the relevant directory (`client/` or `server/`):
+In another terminal, from the repository root:
 
 ```bash
-npm run dev      # Start the development server
-npm run build    # Create a production build
-npm run lint     # Check code with ESLint
-npm test         # Run tests (server only for now)
+cd client
+npm ci
+npm run dev
 ```
 
-## Database and Prisma
+Open `http://localhost:5173`. The client defaults to the API at `http://localhost:3000`. If you need a different API URL, set `VITE_API_URL` in `client/.env.local`.
 
-The Prisma schema is defined in `server/prisma/schema.prisma` and currently includes models for:
+## Authentication flow
+
+1. Create an account at `/register`.
+2. Sign in at `/login`.
+3. On successful login, the client passes the returned user and token to the auth provider's `signIn` function. The provider updates in-memory state and stores the token in `localStorage`.
+4. On a later page load, the provider checks the stored token with `GET /api/user/me`. Invalid or expired sessions are cleared.
+5. `/chat` is protected and currently displays a placeholder. Use the Logout button to clear the local session.
+
+The API routes currently include:
+
+| Method | Route | Access | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/api/auth/register` | Public | Create an account |
+| `POST` | `/api/auth/login` | Public | Authenticate and return a JWT |
+| `GET` | `/api/user/me` | JWT required | Return the authenticated user's details |
+| `GET` | `/api/user/details` | JWT required | Return user details |
+| `GET` | `/health` | Public | Check that the API is responding |
+
+## Useful commands
+
+Run each command from its package directory:
+
+| Directory | Command | Purpose |
+| --- | --- | --- |
+| `client/` | `npm run dev` | Start the Vite development server |
+| `client/` | `npm run build` | Type-check and build the client |
+| `client/` | `npm run lint` | Run ESLint on the client |
+| `server/` | `npm run dev` | Start the API in watch mode |
+| `server/` | `npm run build` | Compile the server TypeScript |
+| `server/` | `npm run lint` | Run ESLint on the server |
+| `server/` | `npm test` | Run Node's test runner |
+
+## Database models
+
+The Prisma schema currently defines:
 
 - `User`
 - `Conversation`
 - `Conversation_Participant`
 - `Message`
 
-The generated Prisma client is located under `server/src/generated/prisma`.
+The conversation and message models establish the planned data structure; corresponding application flows are not yet available.
 
-## Planned next steps
+## Next development areas
 
-The project roadmap is still in progress. The next major milestones are expected to include:
+- List and manage contacts and conversations
+- Create one-to-one conversations
+- Send and retrieve messages
+- Add Socket.IO real-time delivery
+- Expand automated test coverage
 
-- user registration and login
-- direct conversation creation
-- sending and listing messages
-- Socket.IO real-time delivery
-- protected routes and auth middleware
-- chat UI polish
-
-## Documentation
-
-Additional design notes are in the `docs/` folder, including architecture and data model planning. Those documents describe the intended final architecture, even though the implementation is still being built out.
+Architecture and feature design notes are in `docs/`.

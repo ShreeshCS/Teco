@@ -1,6 +1,9 @@
 import { Request, Response } from 'express'
 import * as authService from '../services/auth.service.js'
-import { AuthenticationError } from '../middleware/domain/errors/errors.js'
+import {
+  AuthenticationError,
+  EmailAlreadyExistsError,
+} from '../middleware/domain/errors/errors.js'
 import { signAccessToken } from '../lib/jwt.js'
 
 export const registerUser = async (
@@ -25,11 +28,15 @@ export const registerUser = async (
 
     res.status(201).json(newUser)
   } catch (error) {
+    if (error instanceof EmailAlreadyExistsError) {
+      res.status(409).json(error.message)
+      return
+    }
     const message =
       error instanceof Error ? error.message : 'Internal server error'
 
     console.error('Error adding user:', message)
-    res.status(500).json({ message })
+    res.status(500).json('Internal server error')
   }
 }
 

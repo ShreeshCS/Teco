@@ -17,6 +17,6 @@ export interface SafeUserDetails {
 }
 
 export interface LoginResponseDetails {
-	user: { id: string; email: string };
+	user: SafeUserDetails;
 	token: string;
 }

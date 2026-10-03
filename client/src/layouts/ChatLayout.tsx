@@ -1,14 +1,13 @@
-import { Outlet, useNavigate } from "react-router-dom";
-import { logoutUser } from "../services/auth/auth.service"; // or your logout helper[cite: 3]
+import { Outlet } from "react-router-dom";
 import TecoLogo from "../assets/Teco_Logo.png";
 import "./ChatLayout.scss";
+import { useAuth } from "../hooks/useAuth";
 
 export default function ChatLayout() {
-	const navigate = useNavigate();
+	const { signOut } = useAuth();
 
 	const handleLogout = () => {
-		logoutUser();
-		navigate("/login", { replace: true });
+		signOut();
 	};
 
 	return (

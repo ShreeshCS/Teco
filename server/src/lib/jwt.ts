@@ -5,8 +5,12 @@ export interface TokenPayload {
   email: string
 }
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || 'fallback-dev-secret-do-not-use-in-prod'
+const JWT_SECRET = process.env.JWT_SECRET?.trim()
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET must be set before the server can start')
+}
+
 const JWT_EXPIRES_IN: SignOptions['expiresIn'] =
   (process.env.JWT_EXPIRES_IN as SignOptions['expiresIn']) || '1D'
 

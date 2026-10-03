@@ -40,9 +40,8 @@ export async function loginUser(userData: LoginUserData) {
 
 	if (response && response.user && response.token) {
 		localStorage.setItem("token", response.token); // Setting fresh token on Log in
-		return true;
 	}
-	return false;
+	return response;
 }
 
 export function logoutUser() {
