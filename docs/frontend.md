@@ -1,119 +1,46 @@
 # Frontend Architecture
 
-## Purpose
+The `client/` package is a React, TypeScript, and Vite browser application. It implements registration and login screens, a shared auth context, public and protected route guards, and a placeholder chat screen. It does not currently use Socket.IO or implement conversations and messages.
 
-`client/` contains the React application. It renders the user interface, manages browser-side state, calls the HTTP API, and receives live Socket.IO events. It never connects directly to PostgreSQL and never treats hidden UI as authorization.
+## Current Routes
 
-## Technology
-
-- React
-- Vite
-- TypeScript
-- Socket.IO client
-
-## Planned Structure
-
-```text
-client/
-├── src/
-│   ├── components/      # Reusable UI pieces
-│   ├── pages/           # Route-level screens
-│   ├── layouts/         # Shared page layouts
-│   ├── services/        # HTTP API client functions
-│   ├── socket/          # Socket connection and event handling
-│   ├── hooks/           # Reusable React hooks
-│   ├── context/         # Small app-wide state boundaries
-│   ├── types/           # Client TypeScript types
-│   ├── utils/           # Pure helper functions
-│   ├── App.tsx
-│   └── main.tsx
-├── package.json
-├── vite.config.ts
-└── tsconfig.json
-```
-
-Folders are created when needed; V1 should not start with empty files for every possible concern.
-
-## Screens and Routing
-
-| Route | Access | Purpose |
+| Route | Access | Current behavior |
 | --- | --- | --- |
-| `/register` | Public | Create an account. |
-| `/login` | Public | Sign in and receive an access token. |
-| `/` | Protected | Show the user's direct-conversation list and selected chat. |
-| `/conversations/:conversationId` | Protected | Open a selected direct conversation. |
+| `/` | Public | Redirects to `/login`. |
+| `/register` | Public | Displays the account registration form. |
+| `/login` | Public | Displays the login form; authenticated users are redirected to `/chat`. |
+| `/chat` | Protected | Displays the chat layout and placeholder chat interface. |
+| `*` | Public | Displays a not-found message. |
 
-Protected-route logic redirects an unauthenticated user to `/login`. The server remains the source of truth for whether a token is valid and whether a user may access a conversation.
+`ProtectedRoute` redirects unauthenticated users to `/login`. The server remains responsible for validating tokens and protecting API data.
 
-## UI Composition
+## Authentication State
 
-```mermaid
-flowchart TD
-    App["App"]
-    Auth["Public pages Login and Register"]
-    Chat["Protected chat layout"]
-    List["ConversationList"]
-    Header["ConversationHeader"]
-    Messages["MessageList"]
-    Composer["MessageComposer"]
+`AuthProvider` exposes the user, token, loading/authenticated state, and `signIn`/`signOut` actions. After a successful login, the form passes the returned user and token to `signIn`. The provider updates React state and persists the token in `localStorage`.
 
-    App --> Auth
-    App --> Chat
-    Chat --> List
-    Chat --> Header
-    Chat --> Messages
-    Chat --> Composer
-```
-
-V1 components focus on direct conversations. The header displays the other participant; it does not need group metadata or member-management controls.
-
-## State Boundaries
-
-Keep state close to the component that uses it.
-
-| State | Suggested owner | Examples |
-| --- | --- | --- |
-| Form state | Form component | Email, password, validation messages. |
-| Selected conversation | Chat page/layout | Current conversation ID. |
-| Conversation and message data | Chat feature hooks | Loading, error, and refreshed data. |
-| Authenticated user | Auth context | Current user, token, login, logout. |
-| Socket connection | Socket provider or hook | Connection status and event subscriptions. |
-
-Do not add a global state-management library in V1 unless React state and focused hooks stop being sufficient.
+On startup, the provider checks a stored token with `GET /api/user/me`. It restores the user when the request succeeds and clears the local session when verification fails. Logout clears both context state and the persisted token.
 
 ## HTTP API Layer
 
-`src/services/` centralizes calls to the server. It:
+`src/lib/api/apiClient.ts` centralizes browser requests. It uses `VITE_API_URL` when provided and otherwise defaults to `http://localhost:3000`. It attaches the token from `localStorage` to non-auth requests, parses JSON responses, and throws for non-success HTTP responses. `src/services/` contains auth and user request functions.
 
-- uses `VITE_API_URL` as the API base URL;
-- attaches the current access token to protected requests;
-- returns typed responses; and
-- maps failed responses to user-friendly errors.
+Vite reads environment overrides from the client package directory, for example `client/.env.local`; the root `.env` is used by Docker Compose and is not automatically loaded by Vite.
 
-Feature components call service functions or feature hooks, not `fetch` scattered throughout the UI.
-
-## Authentication Lifecycle
+## Current UI Composition
 
 ```mermaid
-sequenceDiagram
-    participant U as User
-    participant C as Client
-    participant S as Server
-
-    U->>C: Submit login form
-    C->>S: POST /api/auth/login
-    S-->>C: Access token and safe user profile
-    C->>C: Store authenticated state
-    C->>S: Protected request with token
-    S-->>C: Authorized response
+flowchart TD
+    App["App and BrowserRouter"] --> Auth["AuthProvider"]
+    Auth --> Public["/login and /register"]
+    Auth --> Guard{"/chat authenticated?"}
+    Guard -->|Loading session| Loading["Loading session"]
+    Guard -->|Signed out| Login["Redirect to /login"]
+    Guard -->|Signed in| Layout["ChatLayout"]
+    Layout --> Placeholder["Chat placeholder"]
 ```
 
-On logout, the client clears its authenticated state, disconnects Socket.IO, and returns to the public route.
+The theme toggle is held in `App`. Chat layout includes a logout action and an empty conversations placeholder. Conversation lists, message lists, and a composer are planned components and do not exist in the current runtime flow.
 
-## Loading and Error States
+## Future Client Work
 
-Every server-backed view provides a visible loading state, an empty state where applicable, and a recovery path for errors. Examples include an empty conversation list, a conversation with no messages, and a retry action for a failed message load.
-
-## V2 Considerations
-
-Group chat later adds group creation, group identity in the header, member lists, invitations, and member-management controls. These should be built as new UI capabilities rather than complicating direct-message components before they are needed.
+When chat APIs are implemented, feature components should call typed service functions or focused hooks rather than scattering `fetch` calls. Conversation data, selected conversation state, message history, and Socket.IO connection state should remain scoped to the chat feature unless broader sharing becomes necessary.

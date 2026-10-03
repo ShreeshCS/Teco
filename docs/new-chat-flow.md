@@ -1,3 +1,5 @@
+> **Design proposal only:** There is no new-chat UI or conversation API in the current application. This flow is a target for future implementation.
+
 ```mermaid
 flowchart TD
     A[User initiates New Chat with User 2] --> B[Authenticate User 1]

@@ -1,154 +1,102 @@
 # Backend Architecture
 
-## Purpose
-
-`server/` contains the Node.js application. It exposes the HTTP API, authenticates and authorizes users, applies business rules, accesses PostgreSQL through Prisma, and hosts Socket.IO.
-
-The Prisma source of truth lives in `server/prisma/schema.prisma`, and the committed migration history is in `server/prisma/migrations/`. The Prisma Client used at runtime is generated in `server/src/generated/prisma/` and imported through `server/src/lib/prisma.ts`.
+The `server/` package is a Node.js and Express API. It currently implements registration, login, JWT middleware, two protected user endpoints, and a health endpoint. It accesses PostgreSQL through Prisma. Socket.IO and conversation/message API routes are not implemented.
 
 ## Technology
 
-- Node.js
-- Express
+- Node.js and Express
 - TypeScript
-- Prisma Client
-- Socket.IO server
+- Prisma Client with the PostgreSQL adapter
+- bcrypt for password hashing
+- jsonwebtoken for access tokens
 
-## Actual project structure
+## Current Structure
 
 ```text
 server/
 ├── prisma/
-│   ├── schema.prisma       # Prisma schema source of truth
-│   ├── seed.ts            # Optional local seed script
-│   └── migrations/        # Versioned database migrations
-├── src/
-│   ├── routes/            # URL and HTTP-method mappings
-│   ├── controllers/       # Request and response handling
-│   ├── services/          # Business rules and Prisma operations
-│   ├── middleware/        # Auth, validation, and error handling
-│   ├── sockets/           # Socket.IO setup and event handlers
-│   ├── lib/
-│   │   └── prisma.ts      # PrismaClient wrapper using DATABASE_URL
-│   ├── generated/prisma/  # Generated Prisma Client output
-│   ├── types/             # Server TypeScript types
-│   ├── utils/             # Pure helper functions
-│   ├── app.ts             # Express configuration
-│   └── server.ts          # HTTP and Socket.IO startup
-├── package.json
-├── tsconfig.json
-└── prisma.config.ts
+│   ├── schema.prisma
+│   ├── seed.ts
+│   └── migrations/
+└── src/
+    ├── controllers/        # HTTP request/response handling
+    ├── lib/                # JWT and Prisma clients
+    ├── middleware/domain/  # Authentication and domain errors
+    ├── routes/             # Auth and user route registration
+    ├── services/           # Auth and user database operations
+    ├── types/
+    ├── app.ts              # Express middleware and routes
+    └── server.ts           # Environment loading and HTTP startup
 ```
 
 ## Request Flow
 
 ```mermaid
 flowchart LR
-    Route["Route"] --> Controller["Controller"]
-    Controller --> Service["Service"]
-    Service --> Prisma["Prisma Client"]
+    Client["React client"] --> App["Express app"]
+    App -->|"POST /api/auth/register or /login"| AuthRoute["Auth router"]
+    AuthRoute --> AuthController["Auth controller"]
+    AuthController --> AuthService["Auth service"]
+    AuthService --> Prisma["Prisma Client"]
+    App -->|"GET /api/user/*"| Middleware{"JWT middleware"}
+    Middleware -->|"Valid token"| UserRoute["User router"]
+    Middleware -->|"Missing or expired: 401"| Unauthorized["Reject request"]
+    Middleware -->|"Invalid: 403"| Forbidden["Reject request"]
+    UserRoute --> UserController["User controller"]
+    UserController --> UserService["User service"]
+    UserService --> Prisma
+    App -->|"GET /health"| Health["Health response"]
     Prisma --> Database["PostgreSQL"]
 ```
 
-| Layer | Responsibility | Must not do |
-| --- | --- | --- |
-| Route | Maps an HTTP method and URL to a controller; attaches middleware. | Contain business logic. |
-| Controller | Reads validated request input and writes the HTTP response. | Contain database queries or authorization rules. |
-| Service | Checks data-dependent permissions and applies business rules. | Depend on Express request/response objects. |
-| Prisma | Translates service operations to database queries. | Be called directly from the browser or client code. |
+Controllers translate HTTP inputs and results. Services contain the database operations. The browser never accesses Prisma or PostgreSQL directly.
 
-## Prisma responsibility boundaries
+## Implemented Routes
 
-- `server/prisma/schema.prisma` defines the data model and relation rules.
-- `server/prisma/migrations/` stores migration SQL for each schema change.
-- `server/src/lib/prisma.ts` is the app-level Prisma entry point and reads `DATABASE_URL` from environment variables.
-- `server/src/generated/prisma/` is generated output from the schema and is not manual application code.
-- Services call Prisma for data access. Routes and controllers should not talk to the database directly.
+| Method | Endpoint | Access | Behavior |
+| --- | --- | --- | --- |
+| `GET` | `/health` | Public | Returns a simple server health response. |
+| `POST` | `/api/auth/register` | Public | Hashes the password and creates a user. |
+| `POST` | `/api/auth/login` | Public | Verifies credentials and returns user ID, email, and JWT. |
+| `GET` | `/api/user/me` | JWT required | Returns the current user's safe profile. |
+| `GET` | `/api/user/details` | JWT required | Returns safe details for all users. |
 
-## Initial HTTP API
+All `/api/user` routes pass through `authenticateToken`. Missing or expired tokens receive `401`; invalid tokens receive `403`. The middleware attaches the verified token payload to `req.user`.
 
-| Group | Endpoint | Purpose |
-| --- | --- | --- |
-| Health | `GET /health` | Confirm the server is running. |
-| Authentication | `POST /api/auth/register` | Create a user with a hashed password. |
-| Authentication | `POST /api/auth/login` | Verify credentials and issue an access token. |
-| Authentication | `GET /api/auth/me` | Return the current authenticated user. |
-| Conversations | `GET /api/conversations` | List the user's direct conversations. |
-| Conversations | `POST /api/conversations` | Create or return a direct conversation with one selected user. |
-| Conversations | `GET /api/conversations/:id` | Read one direct conversation the user belongs to. |
-| Messages | `GET /api/conversations/:id/messages` | Read paginated messages. |
-| Messages | `POST /api/conversations/:id/messages` | Persist a message in an authorized conversation. |
+## Authentication and Errors
 
-## Conversation Creation Flow
+- Passwords are stored as bcrypt hashes, not plaintext.
+- `JWT_SECRET` must be set and non-empty before the server starts.
+- Access tokens contain `userId` and `email`; the default expiry is one day.
+- Duplicate registration responds with `409`; unexpected registration errors respond with `500`.
+- Invalid login credentials respond with `401`.
 
-See [new-chat-flow.md](./new-chat-flow.md) for the detailed transaction flow when creating a new direct conversation.
+The current implementation uses direct controller error responses. A shared validation and error-handling layer is future cleanup; the broader error-handling approach described in the design backlog is not yet implemented.
 
-## Authentication and Authorization
+## Environment and Local Startup
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant M as Authentication middleware
-    participant S as Conversation service
-    participant D as PostgreSQL
-
-    C->>M: Request with JWT
-    M->>M: Verify token
-    M->>S: Authenticated user and request input
-    S->>D: Verify conversation membership
-    D-->>S: Membership result
-    S-->>C: Authorized response or error
-```
-
-- Registration validates input, hashes the password, and stores only the hash.
-- Login compares the submitted password to the stored hash.
-- The JWT identifies the authenticated user; `JWT_SECRET` stays on the server.
-- Protected endpoints verify the JWT before reaching a controller.
-- Conversation and message services verify membership before reading or writing data.
-- A request for a missing resource returns `404`; an existing resource a user cannot access returns the chosen safe authorization response consistently.
-
-## Error Handling
-
-Validation errors, authentication failures, authorization failures, missing resources, conflicts, and unexpected errors pass through one error-handling strategy. Controllers return predictable status codes and JSON error bodies; internal error details are logged but not exposed to the client.
-
-## Environment Variables
-
-| Variable | Purpose |
-| --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string used by Prisma. |
-| `JWT_SECRET` | Signs and verifies access tokens. |
-| `PORT` | HTTP and Socket.IO server port. |
-| `CLIENT_URL` | Allowed browser origin for CORS. |
-
-## Local Prisma workflow
-
-From the repo root, the reproducible steps are:
+The server loads its environment from `server/.env` when run from the server package. Create the root environment from the example, set a private `JWT_SECRET`, and copy it into the server package:
 
 ```bash
 cp .env.example .env
+# Edit .env and replace JWT_SECRET with a private random value.
+cp .env server/.env
 docker compose up -d
 cd server
-npm install
+npm ci
 npx prisma migrate deploy
 npx prisma generate
+npm run dev
 ```
 
-After that, run the runtime check:
+The app-level Prisma client reads `DATABASE_URL`. Prisma CLI settings and schema paths are defined in `server/prisma.config.ts`.
 
-```bash
-cd server
-node --env-file ../.env --input-type=module <<'EOF'
-import { PrismaPg } from '@prisma/adapter-pg'
-import { PrismaClient } from './src/generated/prisma/client.js'
+## Planned Server Work
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
-const prisma = new PrismaClient({ adapter })
-const result = await prisma.$queryRaw`SELECT 1 AS ok`
-console.log(JSON.stringify(result))
-await prisma.$disconnect()
-EOF
-```
+The following architecture documents describe future behavior, not current endpoints or runtime services:
 
-## V1 Boundary and V2
+- [New chat flow](new-chat-flow.md)
+- [Message lifecycle](messageLifeCycle.md)
+- [Socket.IO design](socket.md)
 
-V1 creates only direct conversations and requires exactly two participants. Group creation, membership mutation, roles, and group-specific authorization are V2 work. The service layer is the correct place to add those rules later.
+When these features are implemented, conversation and message services must enforce participant membership on every read and write.
