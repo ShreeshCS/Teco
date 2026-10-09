@@ -14,6 +14,8 @@ export const getConversationByUser = async (
     },
     select: {
       id: true,
+      createdAt: true,
+      updatedAt: true,
       // The counterpart participant & user
       conversationParticipants: {
         where: {
