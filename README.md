@@ -1,6 +1,6 @@
 # Teco
 
-Teco is a learning project for a real-time, one-to-one chat application. The repository currently contains a React + Vite client, an Express + TypeScript API, PostgreSQL with Prisma, and a working registration and JWT authentication flow. Conversation management, message delivery, and real-time messaging are not implemented yet; the chat screen is currently a placeholder.
+Teco is a learning project for a real-time, one-to-one chat application. The repository contains a React + Vite client, an Express + TypeScript API, PostgreSQL with Prisma, and registration and JWT authentication. The server also exposes an authenticated conversation-list endpoint; message delivery and real-time messaging are not implemented yet, and the chat screen remains a placeholder.
 
 ## Current project state
 
@@ -9,7 +9,7 @@ Teco is a learning project for a real-time, one-to-one chat application. The rep
 - Protected client routes require an authenticated session. On page load, a stored token is checked through `GET /api/user/me`.
 - The server protects user routes with JWT authentication and requires `JWT_SECRET` to start.
 - PostgreSQL is managed by Docker Compose, and Prisma manages the database schema and migrations.
-- Conversations, contacts, message APIs, and Socket.IO delivery remain future work.
+- Listing the signed-in user's conversations is implemented at `GET /api/conversations`. Contact management, message APIs, and Socket.IO delivery remain future work.
 
 ## Repository structure
 
