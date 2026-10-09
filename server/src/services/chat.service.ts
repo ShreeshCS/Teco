@@ -45,5 +45,8 @@ export const getConversationByUser = async (
         },
       },
     },
+    orderBy: {
+      updatedAt: 'desc',
+    },
   })
 }
