@@ -2,7 +2,7 @@
 
 ## Current implementation
 
-The actual Prisma schema for this repo lives in `server/prisma/schema.prisma`. It defines `User`, `Conversation`, `Conversation_Participant`, and `Message`. PostgreSQL is configured through Docker Compose, and the browser client does not connect directly to the database. Registration and authentication use the `User` model; conversation and message application flows are not implemented yet.
+The actual Prisma schema for this repo lives in `server/prisma/schema.prisma`. It defines `User`, `Conversation`, `Conversation_Participant`, and `Message`. PostgreSQL is configured through Docker Compose, and the browser client does not connect directly to the database. Registration and authentication use the `User` model; the server also implements an authenticated conversation-list endpoint. Message creation and delivery flows are not implemented yet.
 
 ## Purpose
 
@@ -122,6 +122,7 @@ The participant table leaves a path to group chat later: a group conversation wo
 | --- | --- | --- | --- |
 | `id` | `String` | Primary key, generated as UUID | Identifies a conversation. |
 | `createdAt` | `DateTime` | Required | Creation timestamp. |
+| `updatedAt` | `DateTime` | Required, Prisma `@updatedAt` | Last update timestamp; initialized from `createdAt` for existing rows by migration and maintained by Prisma on updates. |
 | `messages` | `Message[]` | Relation | Messages in the conversation. |
 | `conversationParticipants` | `Conversation_Participant[]` | Relation | Users attached to the conversation. |
 
@@ -213,6 +214,7 @@ model Message {
 model Conversation {
   id                       String                     @id @default(uuid())
   createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
   messages                 Message[]
   conversationParticipants Conversation_Participant[]
 }
@@ -254,6 +256,12 @@ EOF
 ```
 
 Each schema change is captured as a migration in `server/prisma/migrations/`. Apply migrations with `npx prisma migrate deploy` for a fresh local setup or `npx prisma migrate dev` during active schema work.
+```bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
+The migration initializes existing conversations' `updatedAt` values from `createdAt`. A missing-column error means the target database has not yet applied this migration; check that `DATABASE_URL` points to the intended database before deploying it.
 
 ## Committed vs local artifacts
 
