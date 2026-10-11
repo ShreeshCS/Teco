@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type SubmitEvent } from "react";
 import { TextInput, Button, Message } from "../ui";
-import { loginUser } from "../../services/auth/auth.service";
+import { authService } from "@/services";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -31,19 +31,18 @@ export default function LoginForm() {
 		setIsError(false);
 
 		try {
-			const { user, token } = await loginUser(form);
+			const { user, token } = await authService.loginUser(form);
 			console.log("Submitting login for:", form.email);
 
 			if (user && token) {
 				console.log("Login successful!");
 				signIn(user, token);
 				navigate("/chat", { replace: true }); // Replace browser history so that pressing back won't go to login page again if logged in
-				setForm(initialForm);
 			}
 		} catch (err) {
 			setIsError(true);
 			if (err instanceof Error) {
-				setMessage(err.message); // DO NOT show server error in FE
+				setMessage("Something went wrong. Please try again in some time.");
 			} else {
 				setMessage("Invalid credentials. Please try again.");
 			}

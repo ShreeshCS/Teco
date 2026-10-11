@@ -100,6 +100,48 @@
 				color: var(--subtle);
 			}
 
+			.conversation-item {
+				min-width: 0;
+				margin: 0 0.5rem;
+				padding: 0.75rem 0.875rem;
+				border: 1px solid transparent;
+				border-radius: 6px;
+				cursor: pointer;
+				transition:
+					background-color 0.16s ease,
+					border-color 0.16s ease;
+
+				&:hover {
+					background-color: var(--bg-strong);
+					border-color: var(--panel-border);
+				}
+
+				&:focus-visible {
+					outline: 2px solid var(--accent);
+					outline-offset: 1px;
+				}
+
+				.conversation-user {
+					overflow: hidden;
+					color: var(--text);
+					font-size: 0.9rem;
+					font-weight: 600;
+					text-overflow: ellipsis;
+					white-space: nowrap;
+				}
+
+				.conversation-preview {
+					display: -webkit-box;
+					margin-top: 0.2rem;
+					overflow: hidden;
+					color: var(--muted);
+					font-size: 0.8rem;
+					line-height: 1.4;
+					-webkit-box-orient: vertical;
+					-webkit-line-clamp: 2;
+				}
+			}
+
 			.sidebar-list-placeholder {
 				display: flex;
 				align-items: center;

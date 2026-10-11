@@ -2,13 +2,27 @@ import { Outlet } from "react-router-dom";
 import TecoLogo from "../assets/Teco_Logo.png";
 import "./ChatLayout.scss";
 import { useAuth } from "../hooks/useAuth";
+import { useEffect, useState } from "react";
+import type { Conversation } from "../types/chat.types";
+import { chatService } from "@/services";
+import "./ChatLayout.scss";
 
 export default function ChatLayout() {
-	const { signOut } = useAuth();
-
+	const { signOut, user } = useAuth();
+	const [conversations, setConversations] = useState<Conversation[]>([]);
 	const handleLogout = () => {
 		signOut();
 	};
+
+	useEffect(() => {
+		async function getConversation() {
+			const res: Conversation[] = await chatService.getConversationList();
+			if (res) {
+				setConversations(res);
+			}
+		}
+		getConversation();
+	}, [user]);
 
 	return (
 		<div className="chat-layout-wrapper">
@@ -32,9 +46,22 @@ export default function ChatLayout() {
 						<span>Conversations</span>
 					</div>
 					{/* ConversationList or UserList will be mounted here */}
-					<div className="sidebar-list-placeholder">
-						<p>No active chats yet.</p>
-					</div>
+					{conversations && conversations.length > 0 ? (
+						conversations.map((c) => (
+							<div className="conversation-item" key={c.id}>
+								<div className="conversation-user">
+									{c.withUserName}
+								</div>
+								<div className="conversation-preview">
+									{c.messagePreview}
+								</div>
+							</div>
+						))
+					) : (
+						<div className="sidebar-list-placeholder">
+							<p>No active chats yet.</p>
+						</div>
+					)}
 				</div>
 			</aside>
 

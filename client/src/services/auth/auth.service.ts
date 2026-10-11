@@ -44,6 +44,3 @@ export async function loginUser(userData: LoginUserData) {
 	return response;
 }
 
-export function logoutUser() {
-	localStorage.removeItem("token");
-}
