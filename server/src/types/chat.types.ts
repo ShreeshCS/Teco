@@ -13,4 +13,4 @@ export type ConversationResult = {
     content: string
     createdAt: Date
   }>
-}[]
+}

@@ -3,7 +3,7 @@ import { ConversationResult } from '../types/chat.types.js'
 
 export const getConversationByUser = async (
   userId: string,
-): Promise<ConversationResult> => {
+): Promise<ConversationResult[]> => {
   return await prisma.conversation.findMany({
     where: {
       conversationParticipants: {
