@@ -51,7 +51,31 @@ export const getConversationByUser = async (
   })
 }
 
+const isConversationExist = async (userId1: string, userId2: string) => {
+  const conversation = await prisma.conversation.findFirst({
+    where: {
+      conversationParticipants: {
+        every: {
+          userId: {
+            in: [userId1, userId2],
+          },
+        },
+      },
+    },
+    select: {
+      id: true,
+    },
+  })
+
+  return conversation
+}
+
 export const createConversation = async (userId1: string, userId2: string) => {
+  const existingConversation = await isConversationExist(userId1, userId2)
+  if (existingConversation) {
+    return existingConversation
+  }
+  
   return await prisma.$transaction(async (tx) => {
     const conversation = await tx.conversation.create({
       data: {},
