@@ -15,7 +15,7 @@ export async function getConversationList() {
 		return res.conversationParticipants.map((cp) => {
 			return {
 				id: res.id,
-				messagePreview: res.messages[0]?.content,
+				messagePreview: res.messages?.[0]?.content ?? "",
 				withUserId: cp.user.id,
 				withUserName: cp.user.name,
 			};
