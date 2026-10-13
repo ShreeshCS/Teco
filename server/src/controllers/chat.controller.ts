@@ -26,8 +26,8 @@ export const getConversations = async (
 
 export const createConversation = async (req: Request, res: Response) => {
   const { userId1, userId2 } = req.body
-  if (!userId1 && !userId2) {
-    res.status(400).json({ message: 'Bad request' })
+  if (!userId1 || !userId2) {
+    return res.status(400).json({ message: 'Bad request' })
   }
 
   try {

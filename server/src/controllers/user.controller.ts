@@ -4,7 +4,6 @@ import * as userService from '../services/user.service.js'
 export const getUsers = async (_req: Request, res: Response): Promise<void> => {
   try {
     const users = await userService.getAllUsers()
-
     res.status(200).json(users)
   } catch (error) {
     console.error('Error fetching users:', error)
