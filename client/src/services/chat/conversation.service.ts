@@ -5,7 +5,7 @@ import type {
 	ConversationResultResponse,
 } from "@/types/chat.types";
 
-const url = `${routes.api.conversations}`;
+const url = routes.api.conversations.toString();
 export async function getConversationList() {
 	const response = await apiClient<ConversationResultResponse[]>(url, {
 		method: "GET",
@@ -15,7 +15,7 @@ export async function getConversationList() {
 		return res.conversationParticipants.map((cp) => {
 			return {
 				id: res.id,
-				messagePreview: res.messages[0].content,
+				messagePreview: res.messages[0]?.content,
 				withUserId: cp.user.id,
 				withUserName: cp.user.name,
 			};
