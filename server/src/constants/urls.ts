@@ -31,6 +31,12 @@ const routes = {
         return `${routes.api.user}/details`
       },
     },
+    // Conversation endpoints
+    conversations: {
+      toString() {
+        return `${routes.api}/conversations`
+      },
+    },
   },
 }
 

@@ -1,38 +1,44 @@
 const routes = {
-  // Base segment
-  api: {
-    toString() {
-      return '/api'
-    },
+	// Base segment
+	api: {
+		toString() {
+			return "/api";
+		},
 
-    // Auth domain
-    auth: {
-      toString() {
-        return `${routes.api}/auth`
-      },
+		// Auth domain
+		auth: {
+			toString() {
+				return `${routes.api}/auth`;
+			},
 
-      // Individual actions
-      get register() {
-        return `${routes.api.auth}/register`
-      },
-      get login() {
-        return `${routes.api.auth}/login`
-      },
-    },
+			// Individual actions
+			get register() {
+				return `${routes.api.auth}/register`;
+			},
+			get login() {
+				return `${routes.api.auth}/login`;
+			},
+		},
 
-    // User domain
-    user: {
-      toString() {
-        return `${routes.api}/user`
-      },
+		// User domain
+		user: {
+			toString() {
+				return `${routes.api}/user`;
+			},
 
-      // Individual actions
-      get me() {
-        return `${routes.api.user}/me`
-      }
-    },
-  },
-}
+			// Individual actions
+			get me() {
+				return `${routes.api.user}/me`;
+			},
+		},
+		// Conversation endpoints
+		conversations: {
+			toString() {
+				return `${routes.api}/conversations`;
+			},
+		},
+	},
+};
 
 // 1. Get '/api' directly
 // Output: /api
@@ -43,4 +49,4 @@ const routes = {
 // Bonus: You can also get mid-level paths directly
 // Output: /api/auth
 
-export default routes
+export default routes;

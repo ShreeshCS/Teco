@@ -7,7 +7,7 @@ import {
 } from "react";
 import { AuthContext } from "./AuthContext";
 import type { SafeUserDetails } from "../types/auth.types";
-import { pingMe } from "../services/user/user.service";
+import { verifyMe } from "../services/user/user.service";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
 	const [user, setUser] = useState<SafeUserDetails | null>(null);
@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				return;
 			}
 			try {
-				const response = await pingMe(storedToken);
+				const response = await verifyMe();
 				if (response) {
 					signIn(response, storedToken);
 					console.log("Session verification success");

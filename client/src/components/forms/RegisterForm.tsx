@@ -1,8 +1,7 @@
 import { useState, type ChangeEvent, type SubmitEvent } from "react";
 import { TextInput, Button, Message } from "../ui";
 import type { RegistrationUserData } from "../../types/auth.types";
-import { registerUser } from "../../services/auth/auth.service";
-
+import { authService } from "@/services";
 const initialForm: RegistrationUserData = {
 	name: "",
 	email: "",
@@ -30,7 +29,7 @@ export default function RegisterForm() {
 		}
 
 		setIsError(false);
-		const userDetails = await registerUser(form);
+		const userDetails = await authService.registerUser(form);
 		setMessage(`Welcome, ${form.name || "friend"}! Your account is ready.`);
 		setForm(initialForm);
 		console.log("User registered successfully:", userDetails);
