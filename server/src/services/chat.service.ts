@@ -50,3 +50,30 @@ export const getConversationByUser = async (
     },
   })
 }
+
+export const createConversation = async (userId1: string, userId2: string) => {
+  return await prisma.$transaction(async (tx) => {
+    const conversation = await tx.conversation.create({
+      data: {},
+      select: {
+        id: true,
+      },
+    })
+
+    await tx.conversation_Participant.createMany({
+      data: [
+        {
+          conversationId: conversation.id,
+          userId: userId1,
+        },
+        {
+          conversationId: conversation.id,
+          userId: userId2,
+        },
+      ],
+      skipDuplicates: true,
+    })
+
+    return conversation
+  })
+}
