@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma.js'
 import { ConversationResult } from '../types/chat.types.js'
 
-export const getConversationByUser = async (
+export const getConversations = async (
   userId: string,
 ): Promise<ConversationResult[]> => {
   return await prisma.conversation.findMany({
@@ -75,7 +75,7 @@ export const createConversation = async (userId1: string, userId2: string) => {
   if (existingConversation) {
     return existingConversation
   }
-  
+
   return await prisma.$transaction(async (tx) => {
     const conversation = await tx.conversation.create({
       data: {},

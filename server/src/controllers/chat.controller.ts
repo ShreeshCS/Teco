@@ -14,7 +14,7 @@ export const getConversations = async (
   }
 
   try {
-    const conversations = await chatServices.getConversationByUser(userId)
+    const conversations = await chatServices.getConversations(userId)
     res.status(200).json(conversations)
   } catch (error) {
     if (error instanceof PrismaClientKnownRequestError) {
