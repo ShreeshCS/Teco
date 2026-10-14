@@ -2,6 +2,8 @@ import { useState, type ChangeEvent, type SubmitEvent } from "react";
 import { TextInput, Button, Message } from "../ui";
 import type { RegistrationUserData } from "../../types/auth.types";
 import { authService } from "@/services";
+import { useNavigate } from "react-router-dom";
+
 const initialForm: RegistrationUserData = {
 	name: "",
 	email: "",
@@ -13,6 +15,7 @@ export default function RegisterForm() {
 	const [form, setForm] = useState<RegistrationUserData>(initialForm);
 	const [message, setMessage] = useState("");
 	const [isError, setIsError] = useState(false);
+	const navigate = useNavigate();
 
 	const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = event.target;
@@ -33,6 +36,11 @@ export default function RegisterForm() {
 		setMessage(`Welcome, ${form.name || "friend"}! Your account is ready.`);
 		setForm(initialForm);
 		console.log("User registered successfully:", userDetails);
+
+		// TODO: Show animation pop up of registered successfully for 2 sec and redirect to login page 
+		setTimeout(() => {
+			navigate("/login");	
+		}, 2000);
 	};
 
 	return (
