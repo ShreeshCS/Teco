@@ -16,6 +16,47 @@ model User {
     createdAt                DateTime                   @default(now())
     messages                 Message[]
     conversationParticipants Conversation_Participant[]
+    sentFriendRequests       FriendRequest[]            @relation("SentFriendRequests")
+    receivedFriendRequests   FriendRequest[]            @relation("ReceivedFriendRequests")
+    friendshipsAsUserOne     Friendship[]               @relation("FriendshipsAsUserOne")
+    friendshipsAsUserTwo     Friendship[]               @relation("FriendshipsAsUserTwo")
+}
+
+enum FriendRequestStatus {
+    PENDING
+    ACCEPTED
+}
+
+/// FriendRequest represents a pending or accepted request from one user to another.
+model FriendRequest {
+    id          String              @id @default(uuid())
+    senderId    String
+    recipientId String
+    status      FriendRequestStatus @default(PENDING)
+    createdAt   DateTime            @default(now())
+    updatedAt   DateTime            @updatedAt
+    respondedAt DateTime?
+
+    sender    User @relation("SentFriendRequests", fields: [senderId], references: [id])
+    recipient User @relation("ReceivedFriendRequests", fields: [recipientId], references: [id])
+
+    @@unique([senderId, recipientId])
+    @@index([recipientId, status, createdAt])
+    @@index([senderId, status])
+}
+
+/// Friendship is a symmetric, accepted relationship stored in canonical user-ID order.
+model Friendship {
+    userOneId String
+    userTwoId String
+    createdAt DateTime @default(now())
+
+    userOne User @relation("FriendshipsAsUserOne", fields: [userOneId], references: [id])
+    userTwo User @relation("FriendshipsAsUserTwo", fields: [userTwoId], references: [id])
+
+    @@id([userOneId, userTwoId])
+    @@index([userOneId])
+    @@index([userTwoId])
 }
 
 /// Message model
