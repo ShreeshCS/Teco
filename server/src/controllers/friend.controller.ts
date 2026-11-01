@@ -31,3 +31,37 @@ export async function createFriendRequest(
     res.status(500).json({ message: 'Internal server error' })
   }
 }
+
+export async function acceptFriendRequest(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const userId = getAuthenticatedUserId(req, res)
+
+    if (!userId) return
+
+    const requestId = req.body.requestId
+
+    if (!requestId) {
+      res.status(400).json({ message: 'requestId is required' })
+      return
+    }
+
+    const friendship = await friendshipService.acceptFriendRequest(
+      requestId,
+      userId,
+    )
+
+    res.status(200).json({
+      message: 'Friend request accepted',
+      friendship,
+    })
+  } catch (error) {
+    if (error instanceof FriendRequestValidationError) {
+      res.status(400).json({ message: error.message })
+      return
+    }
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}

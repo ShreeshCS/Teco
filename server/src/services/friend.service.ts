@@ -88,3 +88,58 @@ export async function createFriendRequest(
     throw error
   }
 }
+
+export async function acceptFriendRequest(
+  requestId: string,
+  userId: string,
+) {
+  const pendingRequest = await prisma.friendRequest.findUnique({
+    where: {
+      id: requestId,
+    },
+  })
+
+  if (!pendingRequest || pendingRequest.status !== 'PENDING') {
+    throw new FriendRequestValidationError(
+      'Friend request not found or is no longer pending.',
+    )
+  }
+
+  // Ensure only the intended recipient can accept the request
+  if (pendingRequest.recipientId !== userId) {
+    throw new FriendRequestValidationError(
+      'You are not authorized to accept this friend request.',
+    )
+  }
+
+  const { userOneId, userTwoId } = toCanonicalOrder(
+    pendingRequest.senderId,
+    pendingRequest.recipientId,
+  )
+
+  return await prisma.$transaction(async (tx) => {
+    await tx.friendRequest.update({
+      where: {
+        id: pendingRequest.id,
+      },
+      data: {
+        status: 'ACCEPTED',
+        respondedAt: new Date(),
+      },
+    })
+
+    return await tx.friendship.upsert({
+      where: {
+        userOneId_userTwoId: {
+          userOneId,
+          userTwoId,
+        },
+      },
+      update: {}, // No fields need updating if already friends
+      create: {
+        userOneId,
+        userTwoId,
+      },
+    })
+  })
+}
