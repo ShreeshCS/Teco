@@ -38,6 +38,9 @@ jobs:
         env:
           DATABASE_URL: "postgresql://mock:mock@localhost:5432/mock?schema=public"
 
+      - name: Run server tests
+        run: npm test
+
       - name: Build server code
         run: npm run build
 

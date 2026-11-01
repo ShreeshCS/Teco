@@ -1,15 +1,15 @@
 import type { Request, Response } from 'express'
 import { chatServices } from '@/services/index.js'
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client'
+import { getAuthenticatedUserId } from '@/lib/auth.js'
 
 export const getConversations = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const userId = req.user?.userId
+  const userId = getAuthenticatedUserId(req, res)
 
   if (!userId) {
-    res.status(401).json({ message: 'User not found in session' })
     return
   }
 

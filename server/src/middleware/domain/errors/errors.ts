@@ -1,7 +1,7 @@
 export class EmailAlreadyExistsError extends Error {
   constructor(message = 'An account with this email already exists.') {
-    super(message);
-    this.name = 'EmailAlreadyExistsError';
+    super(message)
+    this.name = 'EmailAlreadyExistsError'
   }
 }
 
@@ -10,5 +10,12 @@ export class AuthenticationError extends Error {
   constructor(message = 'Invalid email or password') {
     super(message)
     this.name = 'AuthenticationError'
+  }
+}
+
+export class FriendRequestValidationError extends Error {
+  constructor(message = 'An error occured while creating a friend request') {
+    super(message)
+    this.name = 'FriendRequestValidationError'
   }
 }
