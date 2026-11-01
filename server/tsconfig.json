@@ -1,17 +1,17 @@
 {
   "compilerOptions": {
     "paths": {
-			"@/*": ["./src/*"]
-		},
+      "@/*": ["./src/*"]
+    },
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "dist",
-    "rootDir": "src",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["vitest/globals", "node"]
   },
-  "include": ["src"], // Only compile app execution code
-  "exclude": ["node_modules", "prisma.config.ts"] // prisma client generation will handle the prisma.config.ts file, so we exclude it from compilation
+  "include": ["src", "test"],
+  "exclude": ["node_modules", "prisma.config.ts"]
 }
