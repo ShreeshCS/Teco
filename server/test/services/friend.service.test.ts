@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   toCanonicalOrder,
   createFriendRequest,
+  acceptFriendRequest,
 } from '@/services/friend.service.js'
 import { prisma } from '@/lib/prisma.js'
 import { FriendRequestValidationError } from '@/middleware/domain/errors/errors.js'
@@ -14,11 +15,14 @@ vi.mock('@/lib/prisma.js', () => ({
     },
     friendship: {
       findUnique: vi.fn(),
+      upsert: vi.fn(),
     },
     friendRequest: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
     },
+    $transaction: vi.fn(),
   },
 }))
 
@@ -169,6 +173,87 @@ describe('friend.service', () => {
         },
       })
       expect(result).toEqual(mockCreatedRequest)
+    })
+  })
+
+  describe('acceptFriendRequest', () => {
+    const requestId = 'req-123'
+    const recipientId = 'recipient-456'
+    const senderId = 'sender-789'
+
+    it('should throw FriendRequestValidationError if request is not found or not pending', async () => {
+      vi.mocked(prisma.friendRequest.findUnique).mockResolvedValueOnce(null)
+      await expect(acceptFriendRequest(requestId, recipientId)).rejects.toThrow(
+        FriendRequestValidationError,
+      )
+    })
+
+    it('should throw FriendRequestValidationError if user is not the recipient', async () => {
+      vi.mocked(prisma.friendRequest.findUnique).mockResolvedValueOnce({
+        id: requestId,
+        senderId,
+        recipientId,
+        status: 'PENDING',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        respondedAt: null,
+      })
+
+      await expect(
+        acceptFriendRequest(requestId, 'different-user'),
+      ).rejects.toThrow(
+        'You are not authorized to accept this friend request.',
+      )
+    })
+
+    it('should accept friend request and upsert friendship', async () => {
+      vi.mocked(prisma.friendRequest.findUnique).mockResolvedValueOnce({
+        id: requestId,
+        senderId,
+        recipientId,
+        status: 'PENDING',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        respondedAt: null,
+      })
+
+      const expectedFriendship = {
+        userOneId: recipientId < senderId ? recipientId : senderId,
+        userTwoId: recipientId < senderId ? senderId : recipientId,
+        createdAt: new Date(),
+      }
+
+      const txMock = {
+        friendRequest: { update: vi.fn().mockResolvedValue({}) },
+        friendship: { upsert: vi.fn().mockResolvedValue(expectedFriendship) },
+      }
+      vi.mocked(prisma.$transaction).mockImplementationOnce(async (cb: any) =>
+        cb(txMock),
+      )
+
+      const result = await acceptFriendRequest(requestId, recipientId)
+
+      expect(txMock.friendRequest.update).toHaveBeenCalledWith({
+        where: { id: requestId },
+        data: {
+          status: 'ACCEPTED',
+          respondedAt: expect.any(Date),
+        },
+      })
+      expect(txMock.friendship.upsert).toHaveBeenCalledWith({
+        where: {
+          userOneId_userTwoId: {
+            userOneId: expectedFriendship.userOneId,
+            userTwoId: expectedFriendship.userTwoId,
+          },
+        },
+        update: {},
+        create: {
+          userOneId: expectedFriendship.userOneId,
+          userTwoId: expectedFriendship.userTwoId,
+        },
+      })
+      expect(result).toEqual(expectedFriendship)
     })
   })
 })

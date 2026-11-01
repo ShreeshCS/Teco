@@ -14,7 +14,7 @@ export class AuthenticationError extends Error {
 }
 
 export class FriendRequestValidationError extends Error {
-  constructor(message = 'An error occured while creating a friend request') {
+  constructor(message = 'Invalid friend request') {
     super(message)
     this.name = 'FriendRequestValidationError'
   }

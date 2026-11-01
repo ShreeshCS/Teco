@@ -47,6 +47,10 @@ const routes = {
       get send() {
         return `${routes.api.friendRequest}/send`
       },
+      // Accept friend request
+      get accept() {
+        return `${routes.api.friendRequest}/accept`
+      },
     },
   },
 }
