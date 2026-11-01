@@ -52,6 +52,12 @@ const routes = {
         return `${routes.api.friendRequest}/accept`
       },
     },
+    // Friends endpoints
+    friends: {
+      toString() {
+        return `${routes.api}/friends`
+      },
+    },
   },
 }
 

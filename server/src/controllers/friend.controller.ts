@@ -65,3 +65,20 @@ export async function acceptFriendRequest(
     res.status(500).json({ message: 'Internal server error' })
   }
 }
+
+export async function getAcceptedFriends(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  try {
+    const userId = getAuthenticatedUserId(req, res)
+
+    if (!userId) return
+
+    const friends = await friendshipService.getAcceptedFriends(userId)
+    res.status(200).json(friends)
+  } catch (error) {
+    if(error instanceof Error)
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}

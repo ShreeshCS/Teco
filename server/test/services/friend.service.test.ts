@@ -3,6 +3,7 @@ import {
   toCanonicalOrder,
   createFriendRequest,
   acceptFriendRequest,
+  getAcceptedFriends,
 } from '@/services/friend.service.js'
 import { prisma } from '@/lib/prisma.js'
 import { FriendRequestValidationError } from '@/middleware/domain/errors/errors.js'
@@ -16,6 +17,7 @@ vi.mock('@/lib/prisma.js', () => ({
     friendship: {
       findUnique: vi.fn(),
       upsert: vi.fn(),
+      findMany: vi.fn(),
     },
     friendRequest: {
       findUnique: vi.fn(),
@@ -254,6 +256,104 @@ describe('friend.service', () => {
         },
       })
       expect(result).toEqual(expectedFriendship)
+    })
+  })
+
+  describe('getAcceptedFriends', () => {
+    const currentUserId = 'user-current-123'
+
+    it('should return an empty array with 200 when user has no friends', async () => {
+      vi.mocked(prisma.friendship.findMany).mockResolvedValueOnce([])
+
+      const result = await getAcceptedFriends(currentUserId)
+
+      expect(prisma.friendship.findMany).toHaveBeenCalledWith({
+        where: {
+          OR: [{ userOneId: currentUserId }, { userTwoId: currentUserId }],
+        },
+        include: {
+          userOne: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              createdAt: true,
+            },
+          },
+          userTwo: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              createdAt: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      })
+      expect(result).toEqual([])
+    })
+
+    it('should return friends and never return the current user as their own friend', async () => {
+      const mockFriendA = {
+        id: 'user-a',
+        name: 'Alice',
+        email: 'alice@example.com',
+        createdAt: new Date('2026-01-01'),
+      }
+      const mockFriendB = {
+        id: 'user-b',
+        name: 'Bob',
+        email: 'bob@example.com',
+        createdAt: new Date('2026-01-02'),
+      }
+      const mockCurrentUser = {
+        id: currentUserId,
+        name: 'Current User',
+        email: 'me@example.com',
+        createdAt: new Date('2026-01-01'),
+      }
+
+      // Friendship 1: current user is userTwo, Alice is userOne
+      // Friendship 2: current user is userOne, Bob is userTwo
+      const mockFriendships = [
+        {
+          userOneId: 'user-a',
+          userTwoId: currentUserId,
+          createdAt: new Date(),
+          userOne: mockFriendA,
+          userTwo: mockCurrentUser,
+        },
+        {
+          userOneId: currentUserId,
+          userTwoId: 'user-b',
+          createdAt: new Date(),
+          userOne: mockCurrentUser,
+          userTwo: mockFriendB,
+        },
+      ]
+
+      vi.mocked(prisma.friendship.findMany).mockResolvedValueOnce(
+        mockFriendships as any,
+      )
+
+      const result = await getAcceptedFriends(currentUserId)
+
+      expect(result).toHaveLength(2)
+      // Each friendship appears once
+      expect(result).toEqual([mockFriendA, mockFriendB])
+      // Current user is never returned as friend
+      expect(result.some((f) => f.id === currentUserId)).toBe(false)
+      // Only safe user fields are present
+      result.forEach((friend) => {
+        expect(friend).toHaveProperty('id')
+        expect(friend).toHaveProperty('name')
+        expect(friend).toHaveProperty('email')
+        expect(friend).toHaveProperty('createdAt')
+        expect(friend).not.toHaveProperty('passwordHash')
+      })
     })
   })
 })

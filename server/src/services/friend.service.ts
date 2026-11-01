@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma.js'
 import { FriendRequestValidationError } from '@/middleware/domain/errors/errors.js'
+import { SafeUserDetails } from '@/types/auth.types.js'
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client'
 
 /**
@@ -141,5 +142,47 @@ export async function acceptFriendRequest(
         userTwoId,
       },
     })
+  })
+}
+
+/**
+ * Retrieves all accepted friends for a given user.
+ * - Each friendship appears once.
+ * - The current user is never returned as their own friend.
+ * - Response includes only safe user fields (excludes passwordHash).
+ * - Returns an empty array if the user has no friends.
+ */
+export async function getAcceptedFriends(
+  userId: string,
+): Promise<SafeUserDetails[]> {
+  const friendships = await prisma.friendship.findMany({
+    where: {
+      OR: [{ userOneId: userId }, { userTwoId: userId }],
+    },
+    include: {
+      userOne: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          createdAt: true,
+        },
+      },
+      userTwo: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          createdAt: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  })
+
+  return friendships.map((f) => {
+    return f.userOneId === userId ? f.userTwo : f.userOne
   })
 }

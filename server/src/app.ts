@@ -17,6 +17,7 @@ app.use(routes.api.auth.toString(), authRouter)
 app.use(routes.api.user.toString(), authenticateToken, userRouter)
 app.use(routes.api.conversations.toString(), authenticateToken, chatRouter)
 app.use(routes.api.friendRequest.toString(), authenticateToken, friendRouter)
+app.use(routes.api.friends.toString(), authenticateToken, friendRouter)
 app.get('/health', (_request, response) => {
   response.json('Hello from Server!')
 })

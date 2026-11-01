@@ -197,4 +197,43 @@ describe('API Route Integration Tests', () => {
       expect(res.body).toEqual(mockRequest)
     })
   })
+
+  describe('GET /api/friends', () => {
+    it('should return 401 when unauthenticated', async () => {
+      const res = await request(app).get('/api/friends')
+      expect(res.status).toBe(401)
+    })
+
+    it('should return 200 with empty list when user has no friends', async () => {
+      vi.mocked(friendshipService.getAcceptedFriends).mockResolvedValueOnce([])
+
+      const res = await request(app)
+        .get('/api/friends')
+        .set('Authorization', `Bearer ${validToken}`)
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual([])
+    })
+
+    it('should return 200 and list of accepted friends on success', async () => {
+      const mockFriends = [
+        {
+          id: 'friend-1',
+          name: 'Alice',
+          email: 'alice@example.com',
+          createdAt: new Date().toISOString(),
+        },
+      ]
+      vi.mocked(friendshipService.getAcceptedFriends).mockResolvedValueOnce(
+        mockFriends as any,
+      )
+
+      const res = await request(app)
+        .get('/api/friends')
+        .set('Authorization', `Bearer ${validToken}`)
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual(mockFriends)
+    })
+  })
 })
