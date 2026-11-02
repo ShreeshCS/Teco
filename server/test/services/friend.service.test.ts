@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   toCanonicalOrder,
+  getFriends,
   createFriendRequest,
   acceptFriendRequest,
 } from '@/services/friend.service.js'
@@ -15,6 +16,7 @@ vi.mock('@/lib/prisma.js', () => ({
     },
     friendship: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       upsert: vi.fn(),
     },
     friendRequest: {
@@ -40,6 +42,87 @@ describe('friend.service', () => {
     it('should place smaller string as userOneId when userIdA > userIdB', () => {
       const result = toCanonicalOrder('user-2', 'user-1')
       expect(result).toEqual({ userOneId: 'user-1', userTwoId: 'user-2' })
+    })
+  })
+
+  describe('getFriends', () => {
+    it('returns each other user with only safe fields', async () => {
+      const currentUserId = 'user-1'
+      const firstFriend = {
+        id: 'user-2',
+        name: 'Alice',
+        email: 'alice@example.com',
+        createdAt: new Date(),
+      }
+      const secondFriend = {
+        id: 'user-3',
+        name: 'Bob',
+        email: 'bob@example.com',
+        createdAt: new Date(),
+      }
+      vi.mocked(prisma.friendship.findMany).mockResolvedValueOnce([
+        {
+          userOneId: currentUserId,
+          userTwoId: firstFriend.id,
+          userOne: {
+            id: currentUserId,
+            name: 'Current user',
+            email: 'current@example.com',
+            createdAt: new Date(),
+          },
+          userTwo: firstFriend,
+        },
+        {
+          userOneId: secondFriend.id,
+          userTwoId: currentUserId,
+          userOne: secondFriend,
+          userTwo: {
+            id: currentUserId,
+            name: 'Current user',
+            email: 'current@example.com',
+            createdAt: new Date(),
+          },
+        },
+      ] as any)
+
+      const friends = await getFriends(currentUserId)
+
+      expect(prisma.friendship.findMany).toHaveBeenCalledWith({
+        where: {
+          OR: [
+            { userOneId: currentUserId, userTwoId: { not: currentUserId } },
+            { userTwoId: currentUserId, userOneId: { not: currentUserId } },
+          ],
+        },
+        select: {
+          userOneId: true,
+          userTwoId: true,
+          userOne: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              createdAt: true,
+            },
+          },
+          userTwo: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              createdAt: true,
+            },
+          },
+        },
+      })
+      expect(friends).toEqual([firstFriend, secondFriend])
+      expect(friends.every((friend) => friend.id !== currentUserId)).toBe(true)
+    })
+
+    it('returns an empty list when the user has no friendships', async () => {
+      vi.mocked(prisma.friendship.findMany).mockResolvedValueOnce([])
+
+      await expect(getFriends('user-1')).resolves.toEqual([])
     })
   })
 

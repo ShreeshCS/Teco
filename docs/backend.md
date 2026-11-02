@@ -66,8 +66,11 @@ Controllers translate HTTP inputs and results. Services contain the database ope
 | `GET` | `/api/user/me` | JWT required | Returns the current user's safe profile. |
 | `GET` | `/api/user/details` | JWT required | Returns safe details for all users. |
 | `GET` | `/api/conversations` | JWT required | Lists conversations containing the authenticated user, counterpart names, and the latest message preview. Each conversation includes `id`, `createdAt`, and `updatedAt`. |
+| `GET` | `/api/friends` | JWT required | Returns the authenticated user's accepted friends with `id`, `name`, `email`, and `createdAt`; returns `[]` when there are none. |
+| `POST` | `/api/friend-request/send` | JWT required | Sends a friend request to the user identified by `receiverId`. |
+| `POST` | `/api/friend-request/accept` | JWT required | Accepts the request identified by `requestId`. |
 
-All `/api/user` and `/api/conversations` routes pass through `authenticateToken`. Missing or expired tokens receive `401`; invalid tokens receive `403`. The middleware attaches the verified token payload to `req.user`, which the conversation service uses to limit results to the signed-in user.
+All `/api/user`, `/api/conversations`, `/api/friends`, and `/api/friend-request` routes pass through `authenticateToken`. Missing or expired tokens receive `401`; invalid tokens receive `403`. The middleware attaches the verified token payload to `req.user`, which protected services use to limit results to the signed-in user.
 
 ## Authentication and Errors
 

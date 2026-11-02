@@ -37,6 +37,12 @@ const routes = {
         return `${routes.api}/conversations`
       },
     },
+    // Accepted friends endpoint
+    friends: {
+      toString() {
+        return `${routes.api}/friends`
+      },
+    },
     // Friend Request endpoints
     friendRequest: {
       toString() {
