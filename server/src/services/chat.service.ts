@@ -52,22 +52,24 @@ export const getConversations = async (
 }
 
 const isConversationExist = async (userId1: string, userId2: string) => {
-  const conversation = await prisma.conversation.findFirst({
+  if (userId1 === userId2) {
+    throw new Error('A conversation requires two distinct users')
+  }
+
+  return await prisma.conversation.findFirst({
     where: {
-      conversationParticipants: {
-        every: {
-          userId: {
-            in: [userId1, userId2],
+      AND: [
+        { conversationParticipants: { some: { userId: userId1 } } },
+        { conversationParticipants: { some: { userId: userId2 } } },
+        {
+          conversationParticipants: {
+            every: { userId: { in: [userId1, userId2] } },
           },
         },
-      },
+      ],
     },
-    select: {
-      id: true,
-    },
+    select: { id: true },
   })
-
-  return conversation
 }
 
 export const createConversation = async (userId1: string, userId2: string) => {

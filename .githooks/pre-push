@@ -1,0 +1,127 @@
+#!/bin/bash
+set -e
+
+# ==============================================================================
+# Git pre-push hook: Runs tests selectively based on changed files
+# - If only 'client/' changes are pushed -> runs only client tests
+# - If only 'server/' changes are pushed -> runs only server tests
+# - If both changed -> runs both client and server tests
+# - If neither changed -> skips tests and proceeds with push
+# ==============================================================================
+
+remote_name="$1"
+remote_url="$2"
+zero="0000000000000000000000000000000000000000"
+
+has_client_changes=false
+has_server_changes=false
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+process_files() {
+    local files="$1"
+    while IFS= read -r file; do
+        [ -z "$file" ] && continue
+        case "$file" in
+            client/*)
+                has_client_changes=true
+                ;;
+            server/*)
+                has_server_changes=true
+                ;;
+        esac
+    done <<< "$files"
+}
+
+# If executed directly in an interactive terminal (manual test)
+if [ -t 0 ]; then
+    echo "🔍 Manual execution detected. Inspecting unpushed / working tree changes..."
+    upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)
+    
+    changed_files=""
+    if [ -n "$upstream" ]; then
+        changed_files=$(git diff --name-only "$upstream..HEAD" 2>/dev/null || true)
+    elif git rev-parse --verify origin/main >/dev/null 2>&1; then
+        changed_files=$(git diff --name-only origin/main..HEAD 2>/dev/null || true)
+    fi
+
+    # Also include staged/unstaged working tree changes if unpushed commit diff is empty
+    if [ -z "$changed_files" ]; then
+        changed_files=$(git status --porcelain 2>/dev/null | awk '{print $2}')
+    fi
+
+    process_files "$changed_files"
+else
+    # Standard git push invocation: read refs from stdin
+    while read -r local_ref local_sha remote_ref remote_sha; do
+        # Skip branch deletion
+        if [ "$local_sha" = "$zero" ]; then
+            continue
+        fi
+
+        changed_files=""
+        if [ "$remote_sha" = "$zero" ]; then
+            # New branch: find commits not yet on remote
+            commits=$(git rev-list "$local_sha" --not --remotes="$remote_name" 2>/dev/null || true)
+
+            if [ -z "$commits" ]; then
+                if git rev-parse --verify "${remote_name}/main" >/dev/null 2>&1; then
+                    commits=$(git rev-list "$local_sha" --not "${remote_name}/main" 2>/dev/null || true)
+                elif git rev-parse --verify "${remote_name}/master" >/dev/null 2>&1; then
+                    commits=$(git rev-list "$local_sha" --not "${remote_name}/master" 2>/dev/null || true)
+                fi
+            fi
+
+            if [ -n "$commits" ]; then
+                changed_files=$(git diff-tree -r --no-commit-id --name-only $commits 2>/dev/null || true)
+            else
+                changed_files=$(git diff-tree -r --no-commit-id --name-only "$local_sha" 2>/dev/null || true)
+            fi
+        else
+            # Existing branch updated
+            changed_files=$(git diff --name-only "$remote_sha..$local_sha" 2>/dev/null || true)
+        fi
+
+        process_files "$changed_files"
+    done
+fi
+
+echo "🔍 Running pre-push checks..."
+
+if [ "$has_client_changes" = false ] && [ "$has_server_changes" = false ]; then
+    echo "ℹ️  No changes detected in 'client/' or 'server/'. Skipping tests."
+    exit 0
+fi
+
+if [ "$has_client_changes" = true ] && [ "$has_server_changes" = true ]; then
+    echo "📁 Changes detected in both 'client/' and 'server/'. Running both test suites..."
+elif [ "$has_client_changes" = true ]; then
+    echo "📁 Changes detected in 'client/' only. Running client tests..."
+else
+    echo "📁 Changes detected in 'server/' only. Running server tests..."
+fi
+
+# Run client tests if client was modified
+if [ "$has_client_changes" = true ]; then
+    echo "▶️  [Client] Running tests (npm run test:run)..."
+    (cd "$REPO_ROOT/client" && npm run test:run) || {
+        echo "❌ Client tests failed! Push aborted." >&2
+        exit 1
+    }
+    echo "✅ [Client] Tests passed."
+fi
+
+# Run server tests if server was modified
+if [ "$has_server_changes" = true ]; then
+    echo "▶️  [Server] Running tests (npm run test)..."
+    (cd "$REPO_ROOT/server" && npm run test) || {
+        echo "❌ Server tests failed! Push aborted." >&2
+        exit 1
+    }
+    echo "✅ [Server] Tests passed."
+fi
+
+echo "🚀 All required tests passed successfully. Proceeding with push."
+exit 0
+
