@@ -15,6 +15,42 @@ export const toCanonicalOrder = (
     : { userOneId: userIdB, userTwoId: userIdA }
 }
 
+export async function getFriends(userId: string) {
+  const friendships = await prisma.friendship.findMany({
+    where: {
+      OR: [
+        { userOneId: userId, userTwoId: { not: userId } },
+        { userTwoId: userId, userOneId: { not: userId } },
+      ],
+    },
+    
+    select: {
+      userOneId: true,
+      userTwoId: true,
+      userOne: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          createdAt: true,
+        },
+      },
+      userTwo: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          createdAt: true,
+        },
+      },
+    },
+  })
+
+  return friendships.map(({ userOne, userTwo }) =>
+    userOne.id === userId ? userTwo : userOne,
+  )
+}
+
 export async function createFriendRequest(
   senderId: string,
   receiverId: string,

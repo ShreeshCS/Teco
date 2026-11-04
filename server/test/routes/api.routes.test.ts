@@ -149,6 +149,49 @@ describe('API Route Integration Tests', () => {
     })
   })
 
+  describe('GET /api/friends', () => {
+    it('should return 401 when unauthenticated', async () => {
+      const res = await request(app).get('/api/friends')
+      expect(res.status).toBe(401)
+    })
+
+    it('should return only safe friend details for the authenticated user', async () => {
+      const friends = [
+        {
+          id: 'friend-1',
+          name: 'Alice',
+          email: 'alice@example.com',
+          createdAt: new Date().toISOString(),
+        },
+      ]
+      vi.mocked(friendshipService.getFriends).mockResolvedValueOnce(
+        friends as any,
+      )
+
+      const res = await request(app)
+        .get('/api/friends')
+        .set('Authorization', `Bearer ${validToken}`)
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual(friends)
+      expect(friendshipService.getFriends).toHaveBeenCalledWith(
+        testUser.userId,
+      )
+      expect(res.body[0]).not.toHaveProperty('passwordHash')
+    })
+
+    it('should return 200 with an empty list when there are no friends', async () => {
+      vi.mocked(friendshipService.getFriends).mockResolvedValueOnce([])
+
+      const res = await request(app)
+        .get('/api/friends')
+        .set('Authorization', `Bearer ${validToken}`)
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual([])
+    })
+  })
+
   describe('POST /api/friend-request/send', () => {
     it('should return 401 when unauthenticated', async () => {
       const res = await request(app)

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import RegisterForm from "@/components/forms/RegisterForm";
 import { registerUser } from "@/services/auth/auth.service";
 
@@ -10,6 +11,12 @@ vi.mock("@/services/auth/auth.service", () => ({
 
 
 const mockedRegisterUser = vi.mocked(registerUser);
+const renderRegisterForm = () =>
+  render(
+    <MemoryRouter>
+      <RegisterForm />
+    </MemoryRouter>,
+  );
 const getRegisterButton = () =>
   screen.getByRole("button", { name: "Register" });
 
@@ -33,7 +40,7 @@ describe("RegisterForm", () => {
   });
 
   it("shows all required fields", () => {
-    render(<RegisterForm />);
+    renderRegisterForm();
 
     expect(screen.getByLabelText("Full name")).toBeRequired();
     expect(screen.getByLabelText("Email")).toBeRequired();
@@ -42,7 +49,7 @@ describe("RegisterForm", () => {
   });
 
   it("shows an error and does not register when passwords do not match", async () => {
-    render(<RegisterForm />);
+    renderRegisterForm();
     const user = await fillForm("different123");
 
     await user.click(getRegisterButton());
@@ -59,7 +66,7 @@ describe("RegisterForm", () => {
       createdAt: "2026-10-13",
     });
 
-    render(<RegisterForm />);
+    renderRegisterForm();
     const user = await fillForm();
 
     await user.click(getRegisterButton());

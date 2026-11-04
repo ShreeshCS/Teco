@@ -3,6 +3,20 @@ import { FriendRequestValidationError } from '@/middleware/domain/errors/errors.
 import { friendshipService } from '@/services/index.js'
 import { Request, Response } from 'express'
 
+export async function getFriends(req: Request, res: Response): Promise<void> {
+  const userId = getAuthenticatedUserId(req, res)
+
+  if (!userId) return
+
+  try {
+    const friends = await friendshipService.getFriends(userId)
+    res.status(200).json(friends)
+  } catch (error) {
+    console.error('Error fetching friends:', error)
+    res.status(500).json({ message: 'Internal server error' })
+  }
+}
+
 export async function createFriendRequest(
   req: Request,
   res: Response,
