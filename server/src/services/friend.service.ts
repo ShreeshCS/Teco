@@ -23,6 +23,9 @@ export async function getFriends(userId: string) {
         { userTwoId: userId, userOneId: { not: userId } },
       ],
     },
+    orderBy: {
+      createdAt: 'desc',
+    },
     select: {
       userOneId: true,
       userTwoId: true,
