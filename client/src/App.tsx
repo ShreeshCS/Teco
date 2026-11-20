@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
 import AuthLayout from "./layouts/AuthLayout";
@@ -11,24 +11,31 @@ import ChatLayout from "./layouts/ChatLayout";
 import ChatInterface from "./pages/chat/ChatInterface";
 
 function App() {
-	const [isDark, setIsDark] = useState(true);
+	const [isDark, setIsDark] = useState(
+		() => localStorage.getItem("teco-theme") !== "light",
+	);
+	const toggleTheme = () => setIsDark((current) => !current);
+
+	useEffect(() => {
+		localStorage.setItem("teco-theme", isDark ? "dark" : "light");
+	}, [isDark]);
 
 	return (
 		<div className={`app-shell ${isDark ? "theme-dark" : "theme-light"}`}>
-			<button
-				type="button"
-				className="theme-toggle"
-				onClick={() => setIsDark((current) => !current)}
-			>
-				{isDark ? "☀️ Light mode" : "🌙 Dark mode"}
-			</button>
 			<AuthProvider>
 				<BrowserRouter>
 					<Routes>
 						{/* PublicRoute redirects authenticated users to chat page */}
 						<Route element={<PublicRoute />}>
 							{/* Auth routes share the AuthLayout shell */}
-							<Route element={<AuthLayout />}>
+							<Route
+								element={
+									<AuthLayout
+										isDark={isDark}
+										onToggleTheme={toggleTheme}
+									/>
+								}
+							>
 								<Route
 									path="/register"
 									element={<RegisterPage />}
@@ -43,7 +50,14 @@ function App() {
 							element={<Navigate to="/login" replace />}
 						/>
 						<Route element={<ProtectedRoute />}>
-							<Route element={<ChatLayout />}>
+							<Route
+								element={
+									<ChatLayout
+										isDark={isDark}
+										onToggleTheme={toggleTheme}
+									/>
+								}
+							>
 								<Route
 									path="/chat"
 									element={<ChatInterface />}

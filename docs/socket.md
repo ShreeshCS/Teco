@@ -1,12 +1,10 @@
-# Real-Time Socket.IO Design
+# Real-Time Socket.IO Chat
 
-> **Design proposal only:** Socket.IO is not installed or started by the current server, and the client has no socket integration. The events and lifecycle below describe a future implementation.
+Socket.IO delivers direct messages after the server authorizes and persists them. Conversation history and friend data remain in PostgreSQL.
 
-## Purpose
+## Connection and Authorization
 
-Socket.IO delivers live updates after the server has performed and persisted an operation. It improves responsiveness; it never replaces the HTTP API or database persistence.
-
-## Connection Lifecycle
+The client opens a Socket.IO connection while a conversation is active and sends its JWT in the handshake auth payload. The server verifies the token before accepting the socket. Each conversation room is joined explicitly; the server checks that the authenticated user is a participant before joining.
 
 ```mermaid
 sequenceDiagram
@@ -16,30 +14,22 @@ sequenceDiagram
 
     C->>S: Connect with JWT in handshake
     S->>S: Verify JWT
-    S->>D: Find user's direct conversations
-    D-->>S: Conversation IDs
-    S->>S: Join one room per conversation
-    S-->>C: Connected and ready
+    C->>S: conversation:join(conversationId)
+    S->>D: Verify conversation membership
+    D-->>S: Membership result
+    S-->>C: Join acknowledgement
 ```
 
-1. The authenticated client creates one Socket.IO connection after login.
-2. The JWT is supplied during the handshake.
-3. The server verifies the JWT and associates the socket with its user ID.
-4. The server finds the user's direct conversations and joins the socket to one room for each conversation.
-5. The client disconnects when it logs out or the application shuts down.
+The client cannot choose a user ID, room name, or membership. The server derives the user ID from the verified JWT and joins the socket to `conversation:<conversationId>` only after checking the database.
 
-An invalid or absent token prevents the connection from being authorized.
+## Events
 
-## Room Model
-
-```mermaid
-flowchart LR
-    UserA["User A's socket"] -->|"joins"| Room["conversation:<conversationId>"]
-    UserB["User B's socket"] -->|"joins"| Room
-    Server["Server"] -->|"emits message:new"| Room
-```
-
-For V1, each room represents one direct conversation and contains sockets from its two participants. The server determines room membership; the client cannot join an arbitrary room merely by knowing its ID.
+| Event | Direction | Payload / behavior |
+| --- | --- | --- |
+| `conversation:join` | Client → server | A conversation ID; acknowledged only after membership is verified. |
+| `message:send` | Client → server | Conversation ID and 1-4000 characters of message content. |
+| `message:new` | Server → room | The persisted message, including ID, author, and creation time. |
+| `connect_error` | Server → client | Connection or authentication failure. |
 
 ## Message Delivery
 
@@ -51,47 +41,25 @@ sequenceDiagram
     participant R as Conversation room
     participant B as Recipient client
 
-    A->>S: POST /api/conversations/:id/messages
-    S->>S: Verify JWT and membership
-    S->>D: Create message
-    D-->>S: Persisted message with ID
-    S-->>A: 201 Created
+    A->>S: message:send(conversationId, content)
+    S->>S: Verify authenticated membership
+    S->>D: Persist message and update conversation
+    D-->>S: Stored message
     S->>R: Emit message:new
     R-->>A: message:new
     R-->>B: message:new
+    S-->>A: Acknowledge success or failure
 ```
 
-The server emits `message:new` only after the message has been stored successfully. The event contains the stored message, including its ID. The sender client uses that ID to avoid duplicating a message already added from the HTTP response.
+The server stores the message in a database transaction before broadcasting it. Messages are not optimistically fabricated in the client. Message history is loaded from the authenticated `GET /api/conversations/:conversationId/messages` endpoint; the client deduplicates live events by message ID and reloads history after reconnecting.
 
-## Initial Events
+## Conversation Lifecycle
 
-| Event | Direction | When it is used | Payload |
-| --- | --- | --- | --- |
-| `message:new` | Server → room | A message has been persisted. | The created message. |
-| `connect_error` | Server → client | Authentication or connection setup fails. | Safe error description. |
+The client creates or opens a direct conversation through `POST /api/conversations` with `friendId`. The backend derives the requesting user from the JWT and permits creation only for an accepted friendship. The client disconnects its conversation socket when the chat view unmounts.
 
-V1 sends messages with HTTP. It does not accept a custom Socket.IO “send message” event, because HTTP gives the sender a clear request/response result and keeps persistence in one path.
+## Operational Notes
 
-## Client Responsibilities
-
-- Open the socket only after authentication succeeds.
-- Subscribe to events once and unsubscribe when the corresponding UI is removed.
-- Update the relevant conversation by message ID; do not append a duplicate.
-- Show a connection problem without losing locally loaded message history.
-- Disconnect on logout.
-
-## Server Responsibilities
-
-- Verify the handshake token before associating a socket with a user.
-- Determine all room membership from the database.
-- Emit events only after authorization and persistence succeed.
-- Never trust a client-provided user ID, conversation membership, or room name.
-- Log connection failures and unexpected handler errors without exposing sensitive details.
-
-## Reconnection
-
-Socket.IO may reconnect after a temporary network loss. On each successful reconnection, the server repeats authentication and room joining. The client refreshes conversation data through the HTTP API where necessary, rather than assuming it received every event while disconnected.
-
-## V2: Group Chat
-
-The room model remains the same: one room per conversation. V2 group chat changes the membership query from exactly two participants to all authorized members. Member additions and removals must update rooms on active sockets and emit group-specific events only after their database changes succeed.
+- Set `CLIENT_URL` to the browser application's origin for Socket.IO CORS.
+- Socket messages are limited to 4000 characters.
+- Only authenticated conversation participants can load history, join rooms, or send messages.
+- Group chat is not currently supported.

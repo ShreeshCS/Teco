@@ -1,6 +1,6 @@
 # Backend Architecture
 
-The `server/` package is a Node.js and Express API. It implements registration, login, JWT middleware, protected user and conversation-list endpoints, and a health endpoint. It accesses PostgreSQL through Prisma. Message APIs and Socket.IO are not implemented.
+The `server/` package is a Node.js and Express API with JWT-protected friends, friend requests, direct conversations, message history, and Socket.IO message delivery. PostgreSQL data is accessed through Prisma.
 
 ## Technology
 
@@ -9,6 +9,7 @@ The `server/` package is a Node.js and Express API. It implements registration, 
 - Prisma Client with the PostgreSQL adapter
 - bcrypt for password hashing
 - jsonwebtoken for access tokens
+- Socket.IO for authenticated realtime message delivery
 
 ## Current Structure
 
@@ -25,8 +26,9 @@ server/
     ├── routes/             # Auth, user, and conversation route registration
     ├── services/           # Auth, user, and conversation database operations
     ├── types/
+    ├── socket.ts           # Authenticated conversation rooms and live messages
     ├── app.ts              # Express middleware and routes
-    └── server.ts           # Environment loading and HTTP startup
+    └── server.ts           # Environment loading, HTTP, and Socket.IO startup
 ```
 
 ## Request Flow
@@ -66,9 +68,13 @@ Controllers translate HTTP inputs and results. Services contain the database ope
 | `GET` | `/api/user/me` | JWT required | Returns the current user's safe profile. |
 | `GET` | `/api/user/details` | JWT required | Returns safe details for all users. |
 | `GET` | `/api/conversations` | JWT required | Lists conversations containing the authenticated user, counterpart names, and the latest message preview. Each conversation includes `id`, `createdAt`, and `updatedAt`. |
+| `POST` | `/api/conversations` | JWT required | Creates or returns a direct conversation for `friendId`; only accepted friends can start a conversation. |
+| `GET` | `/api/conversations/:conversationId/messages` | JWT required | Returns up to 100 messages in chronological order to a conversation participant. |
 | `GET` | `/api/friends` | JWT required | Returns the authenticated user's accepted friends with `id`, `name`, `email`, and `createdAt`; returns `[]` when there are none. |
+| `GET` | `/api/friend-request/pending` | JWT required | Lists incoming pending friend requests with sender name and email. |
 | `POST` | `/api/friend-request/send` | JWT required | Sends a friend request to the user identified by `receiverId`. |
 | `POST` | `/api/friend-request/accept` | JWT required | Accepts the request identified by `requestId`. |
+| `POST` | `/api/friend-request/decline` | JWT required | Deletes a pending request addressed to the authenticated user. |
 
 All `/api/user`, `/api/conversations`, `/api/friends`, and `/api/friend-request` routes pass through `authenticateToken`. Missing or expired tokens receive `401`; invalid tokens receive `403`. The middleware attaches the verified token payload to `req.user`, which protected services use to limit results to the signed-in user.
 
@@ -102,10 +108,10 @@ The app-level Prisma client reads `DATABASE_URL`. Prisma CLI settings and schema
 
 ## Planned Server Work
 
-The following architecture documents describe future behavior, not current endpoints or runtime services:
+Related implementation details:
 
 - [New chat flow](new-chat-flow.md)
 - [Message lifecycle](messageLifeCycle.md)
 - [Socket.IO design](socket.md)
 
-Message creation, message history, and live delivery remain future work. Conversation reads must continue to enforce participant membership.
+Messages are persisted before they are broadcast through Socket.IO. Conversation history and socket room membership both enforce participant membership.

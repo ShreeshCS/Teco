@@ -37,6 +37,30 @@ const routes = {
 				return `${routes.api}/conversations`;
 			},
 		},
+		// Friends endpoint
+		friends: {
+			toString() {
+				return `${routes.api}/friends`;
+			},
+		},
+		// Friend Request endpoints
+		friendRequest: {
+			toString() {
+				return `${routes.api}/friend-request`;
+			},
+			get send() {
+				return `${routes.api.friendRequest}/send`;
+			},
+			get accept() {
+				return `${routes.api.friendRequest}/accept`;
+			},
+			get decline() {
+				return `${routes.api.friendRequest}/decline`;
+			},
+			get pending() {
+				return `${routes.api.friendRequest}/pending`;
+			},
+		},
 	},
 };
 

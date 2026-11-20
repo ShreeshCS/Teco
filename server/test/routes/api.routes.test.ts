@@ -3,7 +3,7 @@ import request from 'supertest'
 import app from '@/app.js'
 import * as authService from '@/services/auth.service.js'
 import * as userService from '@/services/user.service.js'
-import { friendshipService } from '@/services/index.js'
+import { chatServices, friendshipService } from '@/services/index.js'
 import {
   AuthenticationError,
   EmailAlreadyExistsError,
@@ -14,6 +14,7 @@ import { signAccessToken } from '@/lib/jwt.js'
 vi.mock('@/services/auth.service.js')
 vi.mock('@/services/user.service.js')
 vi.mock('@/services/friend.service.js')
+vi.mock('@/services/chat.service.js')
 
 describe('API Route Integration Tests', () => {
   const testUser = {
@@ -32,6 +33,61 @@ describe('API Route Integration Tests', () => {
       const res = await request(app).get('/health')
       expect(res.status).toBe(200)
       expect(res.body).toBe('Hello from Server!')
+    })
+  })
+
+  describe('Conversation endpoints', () => {
+    it('requires authentication before creating a conversation', async () => {
+      const res = await request(app)
+        .post('/api/conversations')
+        .send({ friendId: 'friend-1' })
+
+      expect(res.status).toBe(401)
+      expect(chatServices.createConversation).not.toHaveBeenCalled()
+    })
+
+    it('creates conversations for the authenticated user and a friend', async () => {
+      vi.mocked(chatServices.createConversation).mockResolvedValueOnce({
+        id: 'conversation-1',
+      } as any)
+
+      const res = await request(app)
+        .post('/api/conversations')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({ friendId: 'friend-1' })
+
+      expect(res.status).toBe(201)
+      expect(res.body).toEqual({ id: 'conversation-1' })
+      expect(chatServices.createConversation).toHaveBeenCalledWith(
+        testUser.userId,
+        'friend-1',
+      )
+    })
+
+    it('returns conversation history only to an authenticated participant', async () => {
+      const messages = [
+        {
+          id: 'message-1',
+          content: 'Hello',
+          createdAt: new Date('2026-01-01').toISOString(),
+          createdById: testUser.userId,
+          createdBy: { id: testUser.userId, name: 'Test User' },
+        },
+      ]
+      vi.mocked(chatServices.getConversationMessages).mockResolvedValueOnce(
+        messages as any,
+      )
+
+      const res = await request(app)
+        .get('/api/conversations/conversation-1/messages')
+        .set('Authorization', `Bearer ${validToken}`)
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual(messages)
+      expect(chatServices.getConversationMessages).toHaveBeenCalledWith(
+        'conversation-1',
+        testUser.userId,
+      )
     })
   })
 
@@ -192,6 +248,48 @@ describe('API Route Integration Tests', () => {
     })
   })
 
+  describe('GET /api/friend-request/pending', () => {
+    it('requires authentication', async () => {
+      const res = await request(app).get('/api/friend-request/pending')
+      expect(res.status).toBe(401)
+    })
+
+    it('returns incoming pending requests with safe sender details', async () => {
+      vi.mocked(friendshipService.getPendingFriendRequests).mockResolvedValueOnce(
+        [
+          {
+            id: 'request-1',
+            senderId: 'sender-1',
+            recipientId: testUser.userId,
+            status: 'PENDING',
+            createdAt: new Date('2026-01-01'),
+            sender: { name: 'Alice', email: 'alice@example.com' },
+          },
+        ] as any,
+      )
+
+      const res = await request(app)
+        .get('/api/friend-request/pending')
+        .set('Authorization', `Bearer ${validToken}`)
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual([
+        {
+          id: 'request-1',
+          senderId: 'sender-1',
+          recipientId: testUser.userId,
+          status: 'PENDING',
+          createdAt: new Date('2026-01-01').toISOString(),
+          senderName: 'Alice',
+          senderEmail: 'alice@example.com',
+        },
+      ])
+      expect(friendshipService.getPendingFriendRequests).toHaveBeenCalledWith(
+        testUser.userId,
+      )
+    })
+  })
+
   describe('POST /api/friend-request/send', () => {
     it('should return 401 when unauthenticated', async () => {
       const res = await request(app)
@@ -238,6 +336,25 @@ describe('API Route Integration Tests', () => {
 
       expect(res.status).toBe(200)
       expect(res.body).toEqual(mockRequest)
+    })
+  })
+
+  describe('POST /api/friend-request/decline', () => {
+    it('only removes a pending request when addressed to the authenticated user', async () => {
+      vi.mocked(friendshipService.declineFriendRequest).mockResolvedValueOnce(
+        true,
+      )
+
+      const res = await request(app)
+        .post('/api/friend-request/decline')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({ requestId: 'request-1' })
+
+      expect(res.status).toBe(204)
+      expect(friendshipService.declineFriendRequest).toHaveBeenCalledWith(
+        'request-1',
+        testUser.userId,
+      )
     })
   })
 })

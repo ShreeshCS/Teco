@@ -1,24 +1,24 @@
-> **Design proposal only:** There is no new-chat UI or conversation API in the current application. This flow is a target for future implementation.
+This is the implemented flow for opening a one-to-one conversation with an accepted friend.
 
 ```mermaid
 flowchart TD
-    A[User initiates New Chat with User 2] --> B[Authenticate User 1]
+    A[User selects an accepted friend] --> B[Authenticate requester]
 
-    B -->|Authenticated| C[Validate User 2]
-    B -->|Not Authenticated| X1[Reject Request]
+    B -->|Authenticated| C[Verify accepted friendship]
+    B -->|Not Authenticated| X1[Return 401]
 
-    C -->|User 2 exists| D[Check Existing Conversation<br/>between User 1 and User 2]
-    C -->|User 2 does not exist| X2[Reject Request]
+    C -->|Friends| D[Find existing one-to-one conversation]
+    C -->|Not friends| X2[Return 403]
 
-    D -->|Conversation exists| E[Return existing<br/>conversation_id]
+    D -->|Conversation exists| E[Return existing conversation ID]
 
     D -->|Conversation does not exist| F[BEGIN TRANSACTION]
 
     F --> G[Create Conversation record]
     G --> H[Get conversation_id]
 
-    H --> I[Insert Participant 1<br/>conversation_id + User 1 ID]
-    I --> J[Insert Participant 2<br/>conversation_id + User 2 ID]
+    H --> I[Insert authenticated user participant]
+    I --> J[Insert friend participant]
 
     J --> K{Both inserts successful?}
 
@@ -31,3 +31,5 @@ flowchart TD
     E --> O[Chat Ready]
     N --> O
 ```
+
+Messages are loaded from the participant-protected history endpoint. New messages are sent through the authenticated Socket.IO connection, stored by the server, and then broadcast to the conversation room.

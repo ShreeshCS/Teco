@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-The `client/` package is a React, TypeScript, and Vite browser application. It implements registration and login screens, a shared auth context, public and protected route guards, and a placeholder chat screen. It does not currently use Socket.IO or implement conversations and messages.
+The `client/` package is a React, TypeScript, and Vite browser application. It implements registration/login, shared auth state, protected routes, DB-backed friend and request lists, conversation history, and Socket.IO direct messages.
 
 ## Current Routes
 
@@ -9,7 +9,7 @@ The `client/` package is a React, TypeScript, and Vite browser application. It i
 | `/` | Public | Redirects to `/login`. |
 | `/register` | Public | Displays the account registration form. |
 | `/login` | Public | Displays the login form; authenticated users are redirected to `/chat`. |
-| `/chat` | Protected | Displays the chat layout and placeholder chat interface. |
+| `/chat` | Protected | Displays friends, requests, persisted conversations, and realtime direct chat. |
 | `*` | Public | Displays a not-found message. |
 
 `ProtectedRoute` redirects unauthenticated users to `/login`. The server remains responsible for validating tokens and protecting API data.
@@ -36,11 +36,13 @@ flowchart TD
     Guard -->|Loading session| Loading["Loading session"]
     Guard -->|Signed out| Login["Redirect to /login"]
     Guard -->|Signed in| Layout["ChatLayout"]
-    Layout --> Placeholder["Chat placeholder"]
+    Layout --> Friends["Friends and requests from API"]
+    Layout --> Conversations["Persisted conversations"]
+    Conversations --> Chat["Message history and Socket.IO"]
 ```
 
-The theme toggle is held in `App`. Chat layout includes a logout action and an empty conversations placeholder. Conversation lists, message lists, and a composer are planned components and do not exist in the current runtime flow.
+The theme toggle is held in `App`. Chat layout loads friends, incoming requests, and conversations from authenticated APIs. The active chat loads persisted history and opens an authenticated Socket.IO connection for live delivery.
 
-## Future Client Work
+## Chat Data Flow
 
-When chat APIs are implemented, feature components should call typed service functions or focused hooks rather than scattering `fetch` calls. Conversation data, selected conversation state, message history, and Socket.IO connection state should remain scoped to the chat feature unless broader sharing becomes necessary.
+Typed service functions call the HTTP API. The server persists messages and broadcasts them to authorized conversation rooms. The client reloads history after reconnecting and deduplicates messages by database ID. Friend presence and group chat are not currently implemented.

@@ -1,6 +1,7 @@
 import routes from "@/constants/urls";
 import { apiClient } from "@/lib/api/apiClient";
 import type {
+	ChatMessage,
 	Conversation,
 	ConversationResultResponse,
 } from "@/types/chat.types";
@@ -23,4 +24,20 @@ export async function getConversationList() {
 	});
 
 	return conversations;
+}
+
+export async function createConversation(friendId: string): Promise<{ id: string }> {
+	return apiClient<{ id: string }>(url, {
+		method: "POST",
+		payload: { friendId },
+	});
+}
+
+export async function getConversationMessages(
+	conversationId: string,
+): Promise<ChatMessage[]> {
+	return apiClient<ChatMessage[]>(
+		`${url}/${encodeURIComponent(conversationId)}/messages`,
+		{ method: "GET" },
+	);
 }

@@ -2,7 +2,7 @@
 
 ## Current implementation
 
-The actual Prisma schema for this repo lives in `server/prisma/schema.prisma`. It defines `User`, `Conversation`, `Conversation_Participant`, and `Message`. PostgreSQL is configured through Docker Compose, and the browser client does not connect directly to the database. Registration and authentication use the `User` model; the server also implements an authenticated conversation-list endpoint. Message creation and delivery flows are not implemented yet.
+The actual Prisma schema for this repo lives in `server/prisma/schema.prisma`. It defines `User`, `FriendRequest`, `Friendship`, `Conversation`, `Conversation_Participant`, and `Message`. PostgreSQL is configured through Docker Compose, and the browser client does not connect directly to the database. The server persists friend requests, accepted friendships, conversations, participants, and messages.
 
 ## Purpose
 
@@ -80,7 +80,7 @@ This opens an interactive UI at `http://localhost:5555` where you can inspect an
 
 ## V1 Data Model and Application Status
 
-The schema provides tables for direct, one-to-one conversations, participants, and messages. The current server does not yet expose conversation or message endpoints, and no application service enforces exactly two participants. Those are V1 design goals, not current runtime guarantees.
+The schema provides tables for direct, one-to-one conversations, participants, and messages. The server only creates conversations for accepted friends, verifies participant membership when reading history or joining a socket room, and persists each message before broadcasting it.
 
 ## Logical Data Model
 

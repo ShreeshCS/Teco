@@ -51,29 +51,80 @@ export async function getFriends(userId: string) {
   )
 }
 
+export async function getPendingFriendRequests(userId: string) {
+  return prisma.friendRequest.findMany({
+    where: {
+      recipientId: userId,
+      status: 'PENDING',
+    },
+    select: {
+      id: true,
+      senderId: true,
+      recipientId: true,
+      status: true,
+      createdAt: true,
+      sender: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  })
+}
+
 export async function createFriendRequest(
   senderId: string,
   receiverId: string,
 ) {
-  if (senderId === receiverId) {
+  if (!receiverId || typeof receiverId !== 'string' || !receiverId.trim()) {
+    throw new FriendRequestValidationError('Recipient ID or email is required.')
+  }
+
+  const trimmedReceiver = receiverId.trim()
+
+  if (senderId === trimmedReceiver) {
     throw new FriendRequestValidationError(
       'You cannot send a friend request to yourself.',
     )
   }
 
-  // 1. Check wheather the receiver is present in the database
-  const receiver = await prisma.user.findUnique({
-    where: {
-      id: receiverId,
-    },
-    select: {
-      id: true,
-    },
-  })
+  const isEmail = trimmedReceiver.includes('@')
+
+  // 1. Check whether the receiver is present in the database (support lookup by email or id)
+  const receiver = isEmail
+    ? await prisma.user.findUnique({
+        where: {
+          email: trimmedReceiver,
+        },
+        select: {
+          id: true,
+        },
+      })
+    : await prisma.user.findUnique({
+        where: {
+          id: trimmedReceiver,
+        },
+        select: {
+          id: true,
+        },
+      })
+
   if (!receiver) return null
 
-  // 2. Check is both users are already friends
-  const { userOneId, userTwoId } = toCanonicalOrder(senderId, receiverId)
+  const targetId = receiver.id
+
+  if (senderId === targetId) {
+    throw new FriendRequestValidationError(
+      'You cannot send a friend request to yourself.',
+    )
+  }
+
+  // 2. Check if both users are already friends
+  const { userOneId, userTwoId } = toCanonicalOrder(senderId, targetId)
   const existingFriendship = await prisma.friendship.findUnique({
     where: {
       userOneId_userTwoId: { userOneId, userTwoId },
@@ -87,7 +138,7 @@ export async function createFriendRequest(
   const reversePendingRequest = await prisma.friendRequest.findUnique({
     where: {
       senderId_recipientId: {
-        senderId: receiverId,
+        senderId: targetId,
         recipientId: senderId,
       },
     },
@@ -98,12 +149,13 @@ export async function createFriendRequest(
       'This user has already sent you a friend request. Accept their request instead.',
     )
   }
+
   // 4. Create a record in FriendRequest table
   try {
     return await prisma.friendRequest.create({
       data: {
         senderId: senderId,
-        recipientId: receiverId,
+        recipientId: targetId,
         status: 'PENDING',
       },
       select: {
@@ -123,6 +175,21 @@ export async function createFriendRequest(
     }
     throw error
   }
+}
+
+export async function declineFriendRequest(
+  requestId: string,
+  userId: string,
+): Promise<boolean> {
+  const result = await prisma.friendRequest.deleteMany({
+    where: {
+      id: requestId,
+      recipientId: userId,
+      status: 'PENDING',
+    },
+  })
+
+  return result.count > 0
 }
 
 export async function acceptFriendRequest(

@@ -1,6 +1,6 @@
 # Authentication Flow
 
-JWT authentication is implemented for account registration, login, session restoration, and protected user API routes. Conversation and message authorization flows described elsewhere are not implemented yet.
+JWT authentication protects account, friends, friend-request, conversation, and message APIs. Socket.IO chat connections also require a valid JWT handshake token, and conversation room membership is checked against the database.
 
 ## Registration
 
@@ -83,7 +83,7 @@ flowchart TD
 
 ## Protected Routes and API Requests
 
-The client protects `/chat` and redirects unauthenticated users to `/login`. The server independently protects every route mounted under `/api/user`; client route guards are only a navigation aid and do not grant API access.
+The client protects `/chat` and redirects unauthenticated users to `/login`. The server independently protects routes mounted under `/api/user`, `/api/friends`, `/api/friend-request`, and `/api/conversations`; client route guards are only a navigation aid and do not grant API access.
 
 The shared API client attaches the stored token to non-auth API routes. The server middleware returns `401` when a token is absent or expired and `403` when a supplied token is invalid. The current user routes are:
 

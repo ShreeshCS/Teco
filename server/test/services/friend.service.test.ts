@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   toCanonicalOrder,
   getFriends,
+  getPendingFriendRequests,
   createFriendRequest,
+  declineFriendRequest,
   acceptFriendRequest,
 } from '@/services/friend.service.js'
 import { prisma } from '@/lib/prisma.js'
@@ -20,9 +22,11 @@ vi.mock('@/lib/prisma.js', () => ({
       upsert: vi.fn(),
     },
     friendRequest: {
+      findMany: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      deleteMany: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -117,6 +121,38 @@ describe('friend.service', () => {
       })
       expect(friends).toEqual([firstFriend, secondFriend])
       expect(friends.every((friend) => friend.id !== currentUserId)).toBe(true)
+    })
+
+    describe('getPendingFriendRequests', () => {
+      it('returns only pending requests received by the user with safe sender details', async () => {
+        const request = {
+          id: 'request-1',
+          senderId: 'sender-1',
+          recipientId: 'recipient-1',
+          status: 'PENDING',
+          createdAt: new Date(),
+          sender: { name: 'Alice', email: 'alice@example.com' },
+        }
+        vi.mocked(prisma.friendRequest.findMany).mockResolvedValueOnce(
+          [request] as any,
+        )
+
+        await expect(getPendingFriendRequests('recipient-1')).resolves.toEqual([
+          request,
+        ])
+        expect(prisma.friendRequest.findMany).toHaveBeenCalledWith({
+          where: { recipientId: 'recipient-1', status: 'PENDING' },
+          select: {
+            id: true,
+            senderId: true,
+            recipientId: true,
+            status: true,
+            createdAt: true,
+            sender: { select: { name: true, email: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+      })
     })
 
     it('returns an empty list when the user has no friendships', async () => {
@@ -337,6 +373,35 @@ describe('friend.service', () => {
         },
       })
       expect(result).toEqual(expectedFriendship)
+    })
+
+    describe('declineFriendRequest', () => {
+      it('deletes only a pending request addressed to the current user', async () => {
+        vi.mocked(prisma.friendRequest.deleteMany).mockResolvedValueOnce({
+          count: 1,
+        })
+
+        await expect(
+          declineFriendRequest('request-1', 'recipient-1'),
+        ).resolves.toBe(true)
+        expect(prisma.friendRequest.deleteMany).toHaveBeenCalledWith({
+          where: {
+            id: 'request-1',
+            recipientId: 'recipient-1',
+            status: 'PENDING',
+          },
+        })
+      })
+
+      it('returns false when the request is missing or not addressed to the user', async () => {
+        vi.mocked(prisma.friendRequest.deleteMany).mockResolvedValueOnce({
+          count: 0,
+        })
+
+        await expect(
+          declineFriendRequest('request-1', 'recipient-1'),
+        ).resolves.toBe(false)
+      })
     })
   })
 })

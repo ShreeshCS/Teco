@@ -93,15 +93,11 @@ input {
 }
 
 .theme-toggle {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  z-index: 10;
   border: 1px solid var(--panel-border);
   border-radius: 999px;
   background: var(--panel);
   color: var(--text);
-  padding: 0.7rem 1rem;
+  padding: 0.65rem 0.9rem;
   cursor: pointer;
   box-shadow: 0 8px 20px var(--shadow);
 }

@@ -1,7 +1,7 @@
 export type ConversationResultResponse = {
   id: string
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
   conversationParticipants: Array<{
     user: {
       id: string
@@ -11,13 +11,24 @@ export type ConversationResultResponse = {
   messages: Array<{
     id: string
     content: string
-    createdAt: Date
+    createdAt: string
   }>
 }
 
+export type ChatMessage = {
+  id: string
+  content: string
+  createdAt: string
+  createdById: string
+  createdBy: {
+    id: string
+    name: string
+  }
+}
+
 export type Conversation = {
-    id: string,
-    messagePreview: string,
-    withUserId: string,
-    withUserName: string
+  id: string
+  messagePreview: string
+  withUserId: string
+  withUserName: string
 }
