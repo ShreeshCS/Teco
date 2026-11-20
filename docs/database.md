@@ -2,7 +2,7 @@
 
 ## Current implementation
 
-The actual Prisma schema for this repo lives in `server/prisma/schema.prisma`. It defines `User`, `FriendRequest`, `Friendship`, `Conversation`, `Conversation_Participant`, and `Message`. PostgreSQL is configured through Docker Compose, and the browser client does not connect directly to the database. The server persists friend requests, accepted friendships, conversations, participants, and messages.
+The actual Prisma schema for this repo lives in `server/prisma/schema.prisma`. It defines `User`, `FriendRequest`, `Friendship`, `Conversation`, `Conversation_Participant`, `GroupRole`, and `Message`. Conversations support both direct chats and named groups. PostgreSQL is configured through Docker Compose, and the browser client does not connect directly to the database.
 
 ## Purpose
 
@@ -80,7 +80,7 @@ This opens an interactive UI at `http://localhost:5555` where you can inspect an
 
 ## V1 Data Model and Application Status
 
-The schema provides tables for direct, one-to-one conversations, participants, and messages. The server only creates conversations for accepted friends, verifies participant membership when reading history or joining a socket room, and persists each message before broadcasting it.
+The schema supports direct conversations and group conversations through the same participant and message tables. Direct conversations are created for accepted friends. Groups have an owner, optional description and icon, and participant roles. The server verifies membership when reading history and joining a socket room, and persists messages before broadcasting them.
 
 ## Logical Data Model
 
@@ -89,6 +89,7 @@ The schema provides tables for direct, one-to-one conversations, participants, a
 ```mermaid
 erDiagram
     User ||--o{ Conversation_Participant : participates
+    User o|--o{ Conversation : owns
     Conversation ||--o{ Conversation_Participant : includes
     User ||--o{ Message : sends
     Conversation ||--o{ Message : contains
@@ -96,11 +97,11 @@ erDiagram
 
 ## Design Reasoning
 
-`ConversationParticipant` is the join record between users and conversations. A conversation therefore represents the chat itself, while its two participant records represent who is allowed to take part in it. This avoids assigning artificial `userId1` and `userId2` roles to the two people in a direct chat.
+`Conversation_Participant` is the join record between users and conversations. A conversation represents the chat itself, while its participant records represent who is allowed to take part in it and their group role. This avoids assigning artificial `userId1` and `userId2` roles to a direct chat.
 
 Each message stores its conversation and its sender, rather than a receiver ID. In a one-to-one conversation, the receiver is the other participant. Storing a receiver on every message would duplicate membership data and could allow an inconsistent message whose receiver is not part of the conversation.
 
-The participant table leaves a path to group chat later: a group conversation would add participant rows instead of requiring a different message structure. Enforcing exactly two participants for V1 remains an application-level requirement for the future conversation service.
+Direct and group conversations share the same message structure. Direct conversations have two participants; group conversations can have multiple members. `GroupRole` identifies the owner, admins, and regular members.
 
 ## Tables
 
@@ -123,6 +124,10 @@ The participant table leaves a path to group chat later: a group conversation wo
 | `id` | `String` | Primary key, generated as UUID | Identifies a conversation. |
 | `createdAt` | `DateTime` | Required | Creation timestamp. |
 | `updatedAt` | `DateTime` | Required, Prisma `@updatedAt` | Last update timestamp; initialized from `createdAt` for existing rows by migration and maintained by Prisma on updates. |
+| `isGroup` | `Boolean` | Required, default `false` | Distinguishes group rooms from direct conversations. |
+| `groupKey` | `String?` | Optional, unique | Stable key for the four default rooms; null for private groups and direct chats. |
+| `name`, `description`, `icon` | `String?` | Optional | Group display details. |
+| `ownerId` | `String?` | Optional FK to `User` | Owner of a private group; null for default rooms and direct chats. |
 | `messages` | `Message[]` | Relation | Messages in the conversation. |
 | `conversationParticipants` | `Conversation_Participant[]` | Relation | Users attached to the conversation. |
 
@@ -132,6 +137,7 @@ The participant table leaves a path to group chat later: a group conversation wo
 | --- | --- | --- | --- |
 | `conversationId` | `String` | Composite primary key / FK to `Conversation` | Identifies the conversation. |
 | `userId` | `String` | Composite primary key / FK to `User` | Identifies a participant. |
+| `role` | `GroupRole` | Required, defaults to `MEMBER` | Group permission level (`OWNER`, `ADMIN`, or `MEMBER`). |
 | `conversation` | `Conversation` | Required relation | Conversation record. |
 | `user` | `User` | Required relation | Participant user record. |
 
@@ -153,7 +159,7 @@ The current implementation uses the actual Prisma field names in `server/prisma/
 
 ## Relationship Rules
 
-The following are application-level design rules for the planned chat features. The current schema enforces foreign keys and the participant composite key, but the current server does not yet implement conversation or message services that enforce these rules.
+The following application-level rules are enforced by the current group and chat services:
 
 ```mermaid
 sequenceDiagram
@@ -169,9 +175,12 @@ sequenceDiagram
     end
 ```
 
-- A user may be in many direct conversations.
-- A V1 conversation should have exactly two distinct users.
-- The conversation service should prevent duplicate direct conversations for the same pair of users.
+- A user may participate in many direct or group conversations.
+- Direct conversations require exactly two distinct users and are only created for accepted friends.
+- A private group creator is its owner; only the owner can assign admins or delete the group.
+- Owners and admins can manage members; admins may not remove the owner or other admins.
+- Members can read and send messages but cannot manage group settings or membership.
+- The four default rooms are created for existing users by migration and added to new users during registration.
 - A message sender must be a participant in the message's conversation.
 - Database foreign keys prevent messages and participant records from pointing to missing users or conversations.
 
@@ -182,6 +191,7 @@ sequenceDiagram
 | `User` | Unique `email` | Prevent duplicate accounts and enable login lookup. |
 | `Conversation_Participant` | Composite primary key `(conversationId, userId)` | Prevent duplicate membership. |
 | `Conversation_Participant` | Index `userId` | Efficiently list a user's conversations. |
+| `Conversation` | Unique `groupKey` | Prevent duplicate default rooms. |
 | `Message` | Index `(conversationId, createdAt)` | Efficiently load a conversation's messages in time order. |
 
 ## Current Prisma schema
@@ -213,15 +223,29 @@ model Message {
 
 model Conversation {
   id                       String                     @id @default(uuid())
+  isGroup                  Boolean                    @default(false)
+  groupKey                 String?                    @unique
+  name                     String?
+  description              String?
+  icon                     String?
+  ownerId                  String?
   createdAt                DateTime                   @default(now())
   updatedAt                DateTime                   @updatedAt
   messages                 Message[]
   conversationParticipants Conversation_Participant[]
+  owner                    User?                      @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+}
+
+enum GroupRole {
+  OWNER
+  ADMIN
+  MEMBER
 }
 
 model Conversation_Participant {
   conversationId String
   userId         String
+  role           GroupRole @default(MEMBER)
 
   conversation Conversation @relation(fields: [conversationId], references: [id])
   user         User         @relation(fields: [userId], references: [id])
@@ -261,7 +285,7 @@ npx prisma migrate deploy
 npx prisma generate
 ```
 
-The migration initializes existing conversations' `updatedAt` values from `createdAt`. A missing-column error means the target database has not yet applied this migration; check that `DATABASE_URL` points to the intended database before deploying it.
+The group migration creates the four default rooms and enrolls all existing users. New registrations are enrolled transactionally. A missing-column error means the target database has not yet applied the migrations; check that `DATABASE_URL` points to the intended database before deploying them.
 
 ## Committed vs local artifacts
 
@@ -275,6 +299,6 @@ Local-only and not committed:
 - Docker-managed database storage in the `postgres-data` volume
 - any generated Prisma Client output in `server/src/generated/prisma/`
 
-## V2: Group Chat
+## Default group rooms
 
-Group chat can add a conversation type, group name and avatar, participant roles, and membership-management actions. At that stage the application relaxes V1's exactly-two-participant rule and adds authorization rules for group roles. No V2 fields are added prematurely to V1.
+World Chat, Tech & Code, English Corner, and Love & Vibes are shared default rooms. Every existing account is added by the migration, and registration adds new accounts to all four. Users can also create private groups, add registered users, and manage members according to their owner/admin/member role.

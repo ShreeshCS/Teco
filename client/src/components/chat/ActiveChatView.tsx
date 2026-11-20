@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import type { SafeUserDetails } from "@/types/auth.types";
-import type { ChatMessage } from "@/types/chat.types";
+import type { ChatGroup, ChatMessage } from "@/types/chat.types";
 import { chatService } from "@/services";
 import { BASE_URL } from "@/lib/api/apiClient";
 import { SendIcon, CloseIcon } from "./RetroIcons";
@@ -32,6 +32,8 @@ interface ActiveChatViewProps {
 	currentUser: SafeUserDetails | null;
 	onMessageReceived: (message: ChatMessage) => void;
 	onClose: () => void;
+	group?: ChatGroup;
+	onManageGroup?: () => void;
 }
 
 export default function ActiveChatView({
@@ -40,6 +42,8 @@ export default function ActiveChatView({
 	currentUser,
 	onMessageReceived,
 	onClose,
+	group,
+	onManageGroup,
 }: ActiveChatViewProps) {
 	const [inputContent, setInputContent] = useState("");
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -181,17 +185,26 @@ export default function ActiveChatView({
 			<div className="active-chat-header">
 				<div className="chat-recipient-info">
 					<div className="recipient-avatar">
-						{recipientName.charAt(0).toUpperCase()}
+						{group?.icon || recipientName.charAt(0).toUpperCase()}
 					</div>
 					<div className="recipient-meta">
 						<span className="recipient-name">{recipientName}</span>
 						<span className="recipient-status">
-							Private conversation • ID: {conversationId.slice(0, 8)}
+							{group
+								? `${group.conversationParticipants.length} members • ${group.description || "Group chat"}`
+								: `Private conversation • ID: ${conversationId.slice(0, 8)}`}
 						</span>
 					</div>
 				</div>
 
 				<div className="chat-header-actions">
+					{group && onManageGroup && !group.groupKey && group.conversationParticipants.some(
+						(member) => member.userId === currentUser?.id && member.role !== "MEMBER",
+					) && (
+						<button type="button" className="group-manage-button" onClick={onManageGroup}>
+							Group settings
+						</button>
+					)}
 					<button
 						type="button"
 						className="chat-close-btn"
@@ -219,6 +232,9 @@ export default function ActiveChatView({
 				) : (
 					messages.map((message) => {
 						const isMe = message.createdById === currentUser?.id;
+						const senderRole = group?.conversationParticipants.find(
+							(member) => member.userId === message.createdById,
+						)?.role;
 						return (
 							<div
 								key={message.id}
@@ -227,6 +243,11 @@ export default function ActiveChatView({
 								<div className="bubble-content">
 									<div className="bubble-sender-meta">
 										<span className="sender-name">
+											{group && senderRole && (
+												<span className={`group-role-symbol role-${senderRole.toLowerCase()}`} title={senderRole.toLowerCase()}>
+													{senderRole === "OWNER" ? "♛" : senderRole === "ADMIN" ? "✦" : "●"}
+												</span>
+											)}
 											{isMe ? "You" : message.createdBy.name}
 										</span>
 										<span className="message-time">

@@ -20,6 +20,7 @@ model User {
     receivedFriendRequests   FriendRequest[]            @relation("ReceivedFriendRequests")
     friendshipsAsUserOne     Friendship[]               @relation("FriendshipsAsUserOne")
     friendshipsAsUserTwo     Friendship[]               @relation("FriendshipsAsUserTwo")
+    ownedGroups              Conversation[]             @relation("GroupOwner")
 }
 
 enum FriendRequestStatus {
@@ -76,16 +77,24 @@ model Message {
 /// Conversation model
 model Conversation {
     id                       String                     @id @default(uuid())
+    isGroup                  Boolean                    @default(false)
+    groupKey                 String?                    @unique
+    name                     String?
+    description              String?
+    icon                     String?
+    ownerId                  String?
     createdAt                DateTime                   @default(now())
     updatedAt                DateTime                   @updatedAt
     messages                 Message[]
     conversationParticipants Conversation_Participant[]
+    owner                    User?                      @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: SetNull)
 }
 
 /// Conversation_Participant model
 model Conversation_Participant {
     conversationId String
     userId         String
+    role           GroupRole @default(MEMBER)
 
     conversation Conversation @relation(fields: [conversationId], references: [id])
     user         User         @relation(fields: [userId], references: [id])
@@ -93,4 +102,10 @@ model Conversation_Participant {
     @@id([conversationId, userId])
     // “show me messages for this conversation ordered by time”
     @@index([userId])
+}
+
+enum GroupRole {
+    OWNER
+    ADMIN
+    MEMBER
 }

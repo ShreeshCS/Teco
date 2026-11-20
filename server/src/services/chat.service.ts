@@ -7,6 +7,7 @@ export const getConversations = async (
 ): Promise<ConversationResult[]> => {
   return await prisma.conversation.findMany({
     where: {
+      isGroup: false,
       conversationParticipants: {
         some: {
           userId: userId,
@@ -134,6 +135,16 @@ export const isConversationParticipant = async (
   })
 
   return Boolean(conversation)
+}
+
+export const getConversationParticipantIds = async (
+  conversationId: string,
+): Promise<string[]> => {
+  const participants = await prisma.conversation_Participant.findMany({
+    where: { conversationId },
+    select: { userId: true },
+  })
+  return participants.map(({ userId }) => userId)
 }
 
 export const getConversationMessages = async (

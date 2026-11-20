@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-The `client/` package is a React, TypeScript, and Vite browser application. It implements registration/login, shared auth state, protected routes, DB-backed friend and request lists, conversation history, and Socket.IO direct messages.
+The `client/` package is a React, TypeScript, and Vite browser application. It implements registration/login, shared auth state, protected routes, DB-backed friend and request lists, conversation history, group management, and Socket.IO messages.
 
 ## Current Routes
 
@@ -9,7 +9,7 @@ The `client/` package is a React, TypeScript, and Vite browser application. It i
 | `/` | Public | Redirects to `/login`. |
 | `/register` | Public | Displays the account registration form. |
 | `/login` | Public | Displays the login form; authenticated users are redirected to `/chat`. |
-| `/chat` | Protected | Displays friends, requests, persisted conversations, and realtime direct chat. |
+| `/chat` | Protected | Displays friends, requests, persisted conversations, default group rooms, and realtime direct and group chat. |
 | `*` | Public | Displays a not-found message. |
 
 `ProtectedRoute` redirects unauthenticated users to `/login`. The server remains responsible for validating tokens and protecting API data.
@@ -37,12 +37,13 @@ flowchart TD
     Guard -->|Signed out| Login["Redirect to /login"]
     Guard -->|Signed in| Layout["ChatLayout"]
     Layout --> Friends["Friends and requests from API"]
-    Layout --> Conversations["Persisted conversations"]
+    Layout --> Conversations["Direct conversations and group rooms"]
+    Layout --> GroupManagement["Create groups and manage roles"]
     Conversations --> Chat["Message history and Socket.IO"]
 ```
 
-The theme toggle is held in `App`. Chat layout loads friends, incoming requests, and conversations from authenticated APIs. The active chat loads persisted history and opens an authenticated Socket.IO connection for live delivery.
+The theme toggle is held in `App`. Chat layout loads friends, incoming requests, conversations, and group memberships from authenticated APIs. Group settings expose owner/admin actions while the server enforces the same permissions. The active chat loads persisted history and opens an authenticated Socket.IO connection for live delivery.
 
 ## Chat Data Flow
 
-Typed service functions call the HTTP API. The server persists messages and broadcasts them to authorized conversation rooms. The client reloads history after reconnecting and deduplicates messages by database ID. Friend presence and group chat are not currently implemented.
+Typed service functions call the HTTP API. The server persists messages and broadcasts them to authorized conversation rooms. The client reloads history after reconnecting and deduplicates messages by database ID. In group messages, a purple crown marks the owner, a red symbol marks admins, and a member dot marks regular members.

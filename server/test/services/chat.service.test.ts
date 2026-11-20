@@ -49,6 +49,7 @@ describe('chat.service', () => {
 
       expect(prisma.conversation.findMany).toHaveBeenCalledWith({
         where: {
+          isGroup: false,
           conversationParticipants: {
             some: {
               userId: 'u1',

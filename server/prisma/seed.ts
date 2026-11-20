@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import { prisma } from '../src/lib/prisma'
+import { ensureDefaultGroupsForUser } from '../src/services/group.service.js'
 
 const seedUsers = async () => {
   const user1 = await prisma.user.create({
@@ -65,6 +66,10 @@ async function main() {
   })
 
   const { user1, user2 } = await seedUsers()
+  await prisma.$transaction(async (tx) => {
+    await ensureDefaultGroupsForUser(user1.id, tx)
+    await ensureDefaultGroupsForUser(user2.id, tx)
+  })
   const conversation = await seedConversations()
 
   await seedConversationParticipants(conversation.id, [user1.id, user2.id])

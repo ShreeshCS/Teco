@@ -131,13 +131,25 @@ export function attachSocketServer(httpServer: HttpServer): Server<
           return
         }
 
-        io.to(`conversation:${conversationId}`).emit('message:new', {
+        const room = `conversation:${conversationId}`
+        const participantIds = new Set(
+          await chatServices.getConversationParticipantIds(conversationId),
+        )
+        const realtimeMessage = {
           id: message.id,
           content: message.content,
           createdAt: message.createdAt.toISOString(),
           createdById: message.createdById,
           createdBy: message.createdBy,
-        })
+        }
+        const roomSockets = await io.in(room).fetchSockets()
+        for (const roomSocket of roomSockets) {
+          if (!participantIds.has(roomSocket.data.userId)) {
+            await roomSocket.leave(room)
+            continue
+          }
+          roomSocket.emit('message:new', realtimeMessage)
+        }
         acknowledge({ ok: true })
       } catch (error) {
         console.error('Error sending realtime message:', error)

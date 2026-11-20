@@ -1,6 +1,6 @@
 # Backend Architecture
 
-The `server/` package is a Node.js and Express API with JWT-protected friends, friend requests, direct conversations, message history, and Socket.IO message delivery. PostgreSQL data is accessed through Prisma.
+The `server/` package is a Node.js and Express API with JWT-protected friends, friend requests, direct and group conversations, message history, and Socket.IO message delivery. PostgreSQL data is accessed through Prisma.
 
 ## Technology
 
@@ -24,7 +24,7 @@ server/
     ├── lib/                # JWT and Prisma clients
     ├── middleware/domain/  # Authentication and domain errors
     ├── routes/             # Auth, user, and conversation route registration
-    ├── services/           # Auth, user, and conversation database operations
+    ├── services/           # Auth, user, friendship, conversation, and group operations
     ├── types/
     ├── socket.ts           # Authenticated conversation rooms and live messages
     ├── app.ts              # Express middleware and routes
@@ -70,13 +70,19 @@ Controllers translate HTTP inputs and results. Services contain the database ope
 | `GET` | `/api/conversations` | JWT required | Lists conversations containing the authenticated user, counterpart names, and the latest message preview. Each conversation includes `id`, `createdAt`, and `updatedAt`. |
 | `POST` | `/api/conversations` | JWT required | Creates or returns a direct conversation for `friendId`; only accepted friends can start a conversation. |
 | `GET` | `/api/conversations/:conversationId/messages` | JWT required | Returns up to 100 messages in chronological order to a conversation participant. |
+| `GET` | `/api/groups` | JWT required | Lists the user's groups, members, role assignments, and latest message. The four default rooms are joined automatically. |
+| `POST` | `/api/groups` | JWT required | Creates a private group with the caller as owner and selected registered users as members. |
+| `PATCH` | `/api/groups/:groupId` | JWT required | Owner can update group details, members, and admins. Admins can update the description and manage regular members. |
+| `DELETE` | `/api/groups/:groupId` | JWT required | Deletes an owner-managed private group and its messages. Default rooms cannot be edited or deleted. |
 | `GET` | `/api/friends` | JWT required | Returns the authenticated user's accepted friends with `id`, `name`, `email`, and `createdAt`; returns `[]` when there are none. |
 | `GET` | `/api/friend-request/pending` | JWT required | Lists incoming pending friend requests with sender name and email. |
 | `POST` | `/api/friend-request/send` | JWT required | Sends a friend request to the user identified by `receiverId`. |
 | `POST` | `/api/friend-request/accept` | JWT required | Accepts the request identified by `requestId`. |
 | `POST` | `/api/friend-request/decline` | JWT required | Deletes a pending request addressed to the authenticated user. |
 
-All `/api/user`, `/api/conversations`, `/api/friends`, and `/api/friend-request` routes pass through `authenticateToken`. Missing or expired tokens receive `401`; invalid tokens receive `403`. The middleware attaches the verified token payload to `req.user`, which protected services use to limit results to the signed-in user.
+All `/api/user`, `/api/conversations`, `/api/groups`, `/api/friends`, and `/api/friend-request` routes pass through `authenticateToken`. Missing or expired tokens receive `401`; invalid tokens receive `403`. The middleware attaches the verified token payload to `req.user`, which protected services use to limit results to the signed-in user.
+
+New users are added transactionally to the four default rooms: World Chat, Tech & Code, English Corner, and Love & Vibes. Existing users are enrolled when their group list is first loaded. Group roles are stored on conversation participants; message history and realtime delivery require current membership.
 
 ## Authentication and Errors
 

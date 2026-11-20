@@ -13,10 +13,13 @@ import bcrypt from 'bcrypt'
 
 vi.mock('@/lib/prisma.js', () => ({
   prisma: {
+    $transaction: vi.fn(),
     user: {
       create: vi.fn(),
       findUnique: vi.fn(),
     },
+    conversation: { upsert: vi.fn() },
+    conversation_Participant: { createMany: vi.fn() },
   },
 }))
 
@@ -30,6 +33,11 @@ vi.mock('bcrypt', () => ({
 describe('auth.service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(prisma.$transaction).mockImplementation(async (callback) =>
+      callback(prisma as never) as never,
+    )
+    vi.mocked(prisma.conversation.upsert).mockResolvedValue({ id: 'group-id' } as never)
+    vi.mocked(prisma.conversation_Participant.createMany).mockResolvedValue({ count: 1 })
   })
 
   describe('registerUserService', () => {

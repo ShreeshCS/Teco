@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import TecoLogo from "../assets/Teco_Logo.png";
 import "./ChatLayout.scss";
+import "./GroupChat.scss";
 import { useAuth } from "../hooks/useAuth";
-import type { ChatMessage, Conversation } from "../types/chat.types";
+import type { ChatGroup, ChatMessage, Conversation } from "../types/chat.types";
 import type { FriendUser, FriendRequestItem } from "../types/friend.types";
-import { chatService, friendService } from "@/services";
+import { chatService, friendService, groupService } from "@/services";
 
 import {
 	ProfileIcon,
@@ -19,6 +20,8 @@ import ChatFolderView from "../components/chat/ChatFolderView";
 import FriendsFolderView from "../components/chat/FriendsFolderView";
 import ProfileFolderView from "../components/chat/ProfileFolderView";
 import ActiveChatView from "../components/chat/ActiveChatView";
+import GroupsFolderView from "../components/chat/GroupsFolderView";
+import GroupManagementModal from "../components/chat/GroupManagementModal";
 
 interface ChatLayoutProps {
 	isDark: boolean;
@@ -30,15 +33,19 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 
 	// No folder is selected until the user opens one.
 	const [activeTab, setActiveTab] = useState<"friends" | "profile" | "chat" | null>(null);
+	const [activeChatSection, setActiveChatSection] = useState<"chats" | "groups">("chats");
 
 	// Active selected conversation
 	const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 	const [selectedContactName, setSelectedContactName] = useState<string>("Chat Room");
+	const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+	const [groupModal, setGroupModal] = useState<ChatGroup | null | undefined>(undefined);
 
 	const [searchQuery, setSearchQuery] = useState("");
 
 	// Data states
 	const [conversations, setConversations] = useState<Conversation[]>([]);
+	const [groups, setGroups] = useState<ChatGroup[]>([]);
 	const [friends, setFriends] = useState<FriendUser[]>([]);
 	const [pendingRequests, setPendingRequests] = useState<FriendRequestItem[]>([]);
 	const [dataError, setDataError] = useState<string | null>(null);
@@ -58,7 +65,8 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 			chatService.getConversationList(),
 			friendService.getFriendsList(),
 			friendService.getPendingRequests(),
-		]).then(([conversationResult, friendResult, requestResult]) => {
+			groupService.getGroups(),
+		]).then(([conversationResult, friendResult, requestResult, groupResult]) => {
 			if (!isActive) return;
 			const errors: string[] = [];
 			setDataError(null);
@@ -83,6 +91,12 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 				setPendingRequests([]);
 				errors.push("Unable to load friend requests.");
 			}
+			if (groupResult.status === "fulfilled") {
+				setGroups(groupResult.value);
+			} else {
+				setGroups([]);
+				errors.push("Unable to load groups.");
+			}
 
 			setDataError(errors.length > 0 ? errors.join(" ") : null);
 			setLoadedUserId(user.id);
@@ -93,6 +107,7 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 
 	const hasLoadedSocialData = !!user?.id && loadedUserId === user.id;
 	const visibleConversations = hasLoadedSocialData ? conversations : [];
+	const visibleGroups = hasLoadedSocialData ? groups : [];
 	const visibleFriends = hasLoadedSocialData ? friends : [];
 	const visiblePendingRequests = hasLoadedSocialData ? pendingRequests : [];
 
@@ -161,6 +176,9 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 				existing || (await chatService.createConversation(friend.id));
 			const conversationId = conversation.id;
 			setSelectedConversationId(conversationId);
+			setSelectedGroupId(null);
+			setActiveTab("chat");
+			setActiveChatSection("chats");
 			setSelectedContactName(friend.name);
 			if (!existing) {
 				setConversations((previous) => [
@@ -184,6 +202,9 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 	// Select a conversation from sidebar or list
 	const handleSelectConversation = (convId: string, name?: string) => {
 		setSelectedConversationId(convId);
+		setSelectedGroupId(null);
+		setActiveTab("chat");
+		setActiveChatSection("chats");
 		if (name) {
 			setSelectedContactName(name);
 		} else {
@@ -197,9 +218,42 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 	// Close active chat
 	const handleCloseChat = () => {
 		setSelectedConversationId(null);
+		setSelectedGroupId(null);
+	};
+
+	const handleSelectGroup = (group: ChatGroup) => {
+		setSelectedConversationId(group.id);
+		setSelectedGroupId(group.id);
+		setSelectedContactName(group.name ?? "Group chat");
+		setActiveChatSection("groups");
+		setActiveTab("chat");
+	};
+
+	const handleGroupSaved = (groupId?: string) => {
+		setGroupModal(undefined);
+		void groupService.getGroups().then((updatedGroups) => {
+			setGroups(updatedGroups);
+			if (groupId) {
+				const updatedGroup = updatedGroups.find((group) => group.id === groupId);
+				if (updatedGroup) handleSelectGroup(updatedGroup);
+			} else {
+				setSelectedConversationId(null);
+				setSelectedGroupId(null);
+			}
+		}).catch((error: unknown) => {
+			setDataError(error instanceof Error ? error.message : "Unable to refresh groups.");
+		});
 	};
 
 	const handleChatMessageReceived = (message: ChatMessage) => {
+		if (selectedGroupId) {
+			setGroups((previous) => previous.map((group) =>
+				group.id === selectedGroupId
+					? { ...group, messages: [{ content: message.content, createdAt: message.createdAt }] }
+					: group,
+			));
+			return;
+		}
 		setConversations((previous) => {
 			const conversation = previous.find(
 				(item) => item.id === selectedConversationId,
@@ -216,6 +270,9 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 	const filteredConversations = visibleConversations.filter((c) =>
 		c.withUserName.toLowerCase().includes(searchQuery.toLowerCase())
 	);
+	const selectedGroup = selectedGroupId
+		? visibleGroups.find((group) => group.id === selectedGroupId)
+		: undefined;
 
 	return (
 		<div className="chat-layout-wrapper">
@@ -231,6 +288,7 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 						aria-label="Open profile folder"
 						onClick={() => {
 							setSelectedConversationId(null);
+							setSelectedGroupId(null);
 							setActiveTab("profile");
 						}}
 					>
@@ -243,6 +301,7 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 						className="header-brand clickable"
 						onClick={() => {
 							setSelectedConversationId(null);
+							setSelectedGroupId(null);
 							setActiveTab(null);
 						}}
 						title="Clear workspace"
@@ -313,6 +372,7 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 								className="start-chat-pill-btn"
 								onClick={() => {
 									setSelectedConversationId(null);
+									setSelectedGroupId(null);
 									setActiveTab("friends");
 								}}
 							>
@@ -379,6 +439,7 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 							}`}
 							onClick={() => {
 								setSelectedConversationId(null);
+								setSelectedGroupId(null);
 								setActiveTab("friends");
 							}}
 						>
@@ -397,6 +458,7 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 							}`}
 							onClick={() => {
 								setSelectedConversationId(null);
+								setSelectedGroupId(null);
 								setActiveTab("profile");
 							}}
 						>
@@ -408,11 +470,13 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 						<button
 							type="button"
 							className={`capsule-pill ${
-								activeTab === "chat" && !selectedConversationId ? "active" : ""
+								activeTab === "chat" ? "active" : ""
 							}`}
 							onClick={() => {
 								setSelectedConversationId(null);
+								setSelectedGroupId(null);
 								setActiveTab("chat");
+								setActiveChatSection("chats");
 							}}
 						>
 							<ChatIcon />
@@ -420,6 +484,31 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 						</button>
 					</div>
 				</nav>
+
+				{activeTab === "chat" && !selectedConversationId && (
+					<nav className="chat-section-nav" aria-label="Chat sections">
+						<button
+							type="button"
+							className={`chat-section-tab ${activeChatSection === "chats" ? "active" : ""}`}
+							aria-pressed={activeChatSection === "chats"}
+							onClick={() => setActiveChatSection("chats")}
+						>
+							<ChatIcon />
+							<span>Chats</span>
+							<span className="chat-section-count">{visibleConversations.length}</span>
+						</button>
+						<button
+							type="button"
+							className={`chat-section-tab ${activeChatSection === "groups" ? "active" : ""}`}
+							aria-pressed={activeChatSection === "groups"}
+							onClick={() => setActiveChatSection("groups")}
+						>
+							<UsersIcon />
+							<span>Groups</span>
+							<span className="chat-section-count">{visibleGroups.length}</span>
+						</button>
+					</nav>
+				)}
 
 				{/* Main Content Area Canvas */}
 				<div className="main-canvas-area">
@@ -438,14 +527,22 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 							currentUser={user}
 							onMessageReceived={handleChatMessageReceived}
 							onClose={handleCloseChat}
+							group={selectedGroup}
+							onManageGroup={() => selectedGroup && setGroupModal(selectedGroup)}
 						/>
-					) : activeTab === "chat" ? (
+					) : activeTab === "chat" && activeChatSection === "chats" ? (
 						/* Case 3: Persisted conversations and accepted friends */
 						<ChatFolderView
 							conversations={visibleConversations}
 							friends={visibleFriends}
 							onSelectConversation={handleSelectConversation}
 							onStartChatWithFriend={handleStartChatWithFriend}
+						/>
+					) : activeTab === "chat" && activeChatSection === "groups" ? (
+						<GroupsFolderView
+							groups={visibleGroups}
+							onSelectGroup={handleSelectGroup}
+							onCreateGroup={() => setGroupModal(null)}
 						/>
 					) : activeTab === "friends" ? (
 						/* Case 4: Friend requests and accepted friends */
@@ -463,6 +560,14 @@ export default function ChatLayout({ isDark, onToggleTheme }: ChatLayoutProps) {
 					) : null}
 				</div>
 			</main>
+			{groupModal !== undefined && user?.id && (
+				<GroupManagementModal
+					group={groupModal}
+					currentUserId={user.id}
+					onClose={() => setGroupModal(undefined)}
+					onSaved={handleGroupSaved}
+				/>
+			)}
 		</div>
 	);
 }

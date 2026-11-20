@@ -11,6 +11,7 @@ import {
   SafeUserDetails,
 } from '../types/auth.types.js'
 import bcrypt from 'bcrypt'
+import { ensureDefaultGroupsForUser } from './group.service.js'
 
 const SALT_ROUNDS = 10
 
@@ -32,18 +33,22 @@ export const registerUserService = async (
     // Hash the password before storing it in the database
     const passwordHash = await hashPassword(userData.password)
 
-    const user: SafeUserDetails = await prisma.user.create({
-      data: {
-        name: userData.name,
-        email: userData.email,
-        passwordHash: passwordHash,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true,
-      },
+    const user: SafeUserDetails = await prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          name: userData.name,
+          email: userData.email,
+          passwordHash,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          createdAt: true,
+        },
+      })
+      await ensureDefaultGroupsForUser(createdUser.id, tx)
+      return createdUser
     })
 
     return user

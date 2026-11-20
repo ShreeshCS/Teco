@@ -5,6 +5,7 @@ import authRouter from './routes/auth.route.js'
 import chatRouter from './routes/chat.route.js'
 import friendRequestRouter from './routes/friend.route.js'
 import friendsListRouter from './routes/friends.route.js'
+import groupRouter from './routes/group.route.js'
 import { authenticateToken } from './middleware/domain/auth/auth.middleware.js'
 import routes from './constants/urls.js'
 
@@ -17,6 +18,7 @@ app.use(cors({ origin: 'http://localhost:5173' }))
 app.use(routes.api.auth.toString(), authRouter)
 app.use(routes.api.user.toString(), authenticateToken, userRouter)
 app.use(routes.api.conversations.toString(), authenticateToken, chatRouter)
+app.use(routes.api.groups.toString(), authenticateToken, groupRouter)
 app.use(routes.api.friendRequest.toString(), authenticateToken, friendRequestRouter)
 app.use(routes.api.friends.toString(), authenticateToken, friendsListRouter)
 app.get('/health', (_request, response) => {

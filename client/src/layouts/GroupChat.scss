@@ -1,0 +1,204 @@
+.group-folder-card {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	overflow-y: auto;
+}
+
+.group-folder-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
+
+	h2 { margin: 0; font-size: 1rem; letter-spacing: 0.05em; }
+	p { margin: 0.35rem 0 0; color: var(--subtle); font-size: 0.82rem; }
+}
+
+.group-card-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+	gap: 0.85rem;
+}
+
+.group-card {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.45rem;
+	min-height: 165px;
+	padding: 1rem;
+	border: 1px solid var(--panel-border);
+	border-radius: 12px;
+	background: var(--surface);
+	color: var(--text);
+	text-align: left;
+	cursor: pointer;
+
+	&:hover { border-color: var(--accent); background: var(--bg-strong); }
+	.group-card-icon { font-size: 1.5rem; }
+	.group-card-name { font-weight: 700; }
+	.group-card-description { color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
+	.group-card-meta {
+		margin-top: auto;
+		width: 100%;
+		overflow: hidden;
+		color: var(--subtle);
+		font-size: 0.7rem;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
+
+.group-primary-button,
+.group-secondary-button,
+.group-danger-button,
+.group-manage-button {
+	padding: 0.55rem 0.85rem;
+	border: 1px solid var(--accent);
+	border-radius: 8px;
+	background: var(--primary);
+	color: #fff;
+	font-size: 0.78rem;
+	font-weight: 700;
+	cursor: pointer;
+	&:disabled { opacity: 0.55; cursor: not-allowed; }
+}
+
+.group-secondary-button {
+	border-color: var(--panel-border);
+	background: var(--surface);
+	color: var(--text);
+}
+.group-danger-button {
+	border-color: var(--danger);
+	background: transparent;
+	color: var(--danger);
+}
+.group-manage-button {
+	border-color: var(--panel-border);
+	background: var(--surface);
+	color: var(--text);
+}
+
+.group-modal-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 100;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	background: rgba(5, 6, 14, 0.72);
+}
+
+.group-modal {
+	width: min(560px, 100%);
+	max-height: min(90vh, 760px);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	border: 1px solid var(--panel-border);
+	border-radius: 14px;
+	background: var(--panel);
+	box-shadow: 0 20px 70px rgba(0, 0, 0, 0.45);
+	color: var(--text);
+
+	.group-modal-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 1rem 1.2rem;
+		border-bottom: 1px solid var(--panel-border);
+		h2 { margin: 0; font-size: 1rem; }
+		button {
+			border: 0;
+			background: transparent;
+			color: var(--subtle);
+			font-size: 1.5rem;
+			cursor: pointer;
+		}
+	}
+	.group-modal-body {
+		display: flex;
+		flex-direction: column;
+		gap: 0.85rem;
+		padding: 1rem 1.2rem;
+		overflow-y: auto;
+		label:not(.group-admin-toggle) {
+			display: flex;
+			flex-direction: column;
+			gap: 0.35rem;
+			font-size: 0.78rem;
+			font-weight: 650;
+		}
+		input:not([type="checkbox"]), textarea {
+			width: 100%;
+			padding: 0.65rem 0.75rem;
+			border: 1px solid var(--panel-border);
+			border-radius: 7px;
+			background: var(--surface);
+			color: var(--text);
+			font: inherit;
+			font-size: 0.84rem;
+			resize: vertical;
+		}
+		.group-member-picker {
+			max-height: 220px;
+			overflow-y: auto;
+			border: 1px solid var(--panel-border);
+			border-radius: 8px;
+			.group-picker-title {
+				position: sticky;
+				top: 0;
+				padding: 0.6rem 0.75rem;
+				background: var(--bg-strong);
+				font-size: 0.75rem;
+				font-weight: 700;
+			}
+		}
+		.group-member-option {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.5rem;
+			padding: 0.5rem 0.75rem;
+			border-top: 1px solid var(--panel-border);
+			label {
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+				font-size: 0.8rem;
+			}
+		}
+		.group-admin-toggle { color: var(--subtle); font-size: 0.72rem; }
+		.group-role-label { font-size: 0.68rem; text-transform: capitalize; }
+		.role-owner { color: #b794f6; }
+		.role-admin { color: #fb7185; }
+		.group-modal-actions {
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			gap: 0.5rem;
+			padding-top: 0.5rem;
+			border-top: 1px solid var(--panel-border);
+		}
+	}
+}
+
+.group-role-symbol {
+	margin-right: 0.35rem;
+	font-size: 0.9em;
+	&.role-owner { color: #b794f6; }
+	&.role-admin { color: #fb7185; }
+	&.role-member { color: var(--subtle); font-size: 0.68em; }
+}
+
+@media (max-width: 700px) {
+	.group-modal .group-modal-body .group-modal-actions {
+		flex-wrap: wrap;
+		justify-content: stretch;
+		button { flex: 1; }
+	}
+}

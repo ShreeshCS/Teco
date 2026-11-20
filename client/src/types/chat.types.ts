@@ -32,3 +32,27 @@ export type Conversation = {
   withUserId: string
   withUserName: string
 }
+
+export type GroupRole = "OWNER" | "ADMIN" | "MEMBER";
+
+export type GroupMember = {
+	userId: string;
+	role: GroupRole;
+	user: {
+		id: string;
+		name: string;
+		email: string;
+	};
+};
+
+export type ChatGroup = {
+	id: string;
+	name: string | null;
+	description: string | null;
+	icon: string | null;
+	groupKey: string | null;
+	ownerId: string | null;
+	updatedAt: string;
+	conversationParticipants: GroupMember[];
+	messages: Array<{ content: string; createdAt: string }>;
+};
